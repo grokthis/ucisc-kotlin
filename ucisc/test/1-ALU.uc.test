@@ -1,0 +1,240 @@
+########
+# Test simple stack setup and push/pop values
+########
+
+# Test definitions
+#       start return
+TEST    0     8
+TEST    10    25
+TEST    22    27
+TEST    32    19
+TEST    42    65525
+TEST    50    40
+TEST    60    2
+TEST    70    2560
+TEST    78    1024
+TEST    86    10
+TEST    94    21
+TEST    104   65535
+TEST    114    110
+TEST    124    5
+TEST    134    10
+TEST    146    15
+
+# Test a simple AND operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  copy val 25.imm stack
+   0    4    25         1    0          1    4
+#  and stack 1.imm stack push
+   1    1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 8
+
+# Test ALU operation doesn't overwrite args when pushing
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  copy val 25.imm stack
+   0    4    25         1    0          1    4
+#  and stack 1.imm stack push
+   1    1    1          1    0          1    4
+#  copy &stack 1.imm &stack
+   0    5    1          5    -          0    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 25
+
+# Test a simple OR operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  copy val 25.imm stack
+   0    4    25         1    0          1    4
+#  or stack 1.imm stack push
+   2    1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 27
+
+# Test a simple XOR operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  copy val 25.imm stack
+   0    4    25         1    0          1    4
+#  xor stack 1.imm stack push
+   3    1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 19
+
+# Test a simple INV operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  inv stack stack push
+   4    1    0          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 65525
+
+# Test a simple SHL operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    2          1    0          1    4
+#  copy val 2.imm stack
+   0    4    10         1    0          1    4
+#  shl stack 1.imm stack push
+   5    1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 40
+
+# Test a simple SHR operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    2          1    0          1    4
+#  copy val 2.imm stack
+   0    4    10         1    0          1    4
+#  shr stack 1.imm stack push
+   6    1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 2
+
+# Test a simple SWAP operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  swap stack 0.imm stack push
+   7    1    0          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 2560
+
+# Test a simple MSB operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    1034         1    0          1    4
+#  msb stack 0.imm stack push
+   8    1    0          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 1024
+
+# Test a simple LSB operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    1034       1    0          1    4
+#  lsb stack 0.imm stack push
+   9    1    0          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 10
+
+# Test a simple ADD operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  copy val 11.imm stack
+   0    4    11         1    0          1    4
+#  add stack 1.imm stack push
+   10   1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 21
+
+# Test a simple SUB operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    11         1    0          1    4
+#  copy val 11.imm stack
+   0    4    10         1    0          1    4
+#  sub stack 1.imm stack push
+   11   1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 65535
+
+# Test a simple MULT operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    10         1    0          1    4
+#  copy val 11.imm stack
+   0    4    11         1    0          1    4
+#  mult stack 1.imm stack push
+   12   1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 110
+
+# Test a simple DIV operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    2          1    0          1    4
+#  copy val 11.imm stack
+   0    4    10         1    0          1    4
+#  div stack 1.imm stack push
+   13   1    1          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 5
+
+# Test a simple OFLOW operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 10.imm stack
+   0    4    11         1    0          1    4
+#  copy val 11.imm stack
+   0    4    10         1    0          1    4
+#  div stack 1.imm stack push
+   13   1    1          1    0          1    4
+   14   4    -1         1    0          0    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 10
+
+# Test a simple WOFLOW operation
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 15.imm stack
+   0    4    15         1    0          1    4
+#  div stack 1.imm stack push
+   15   4    -1         1    0          0    4
+   14   4    -1         1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 15

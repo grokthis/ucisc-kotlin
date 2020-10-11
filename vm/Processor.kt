@@ -1,46 +1,77 @@
 package com.grokthis.ucisc.vm
 
-class Processor(id: Int, addressWidth: Int): Device(id, DeviceType.PROCESSOR, addressWidth) {
+import kotlin.system.measureTimeMillis
+
+class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, addressWidth) {
     var pc: Int = 0
         set(value) {
             field = value
-            next = value + 1
+            next = value + 2
         }
-    var next: Int = 0
-    var flags: Int = 0
+    var next: Int = 2
     var overflow: Int = 0
-    private val registers = Array(4) { 0 }
+    private val registers = Array(8) { 0 }
 
     fun setRegister(number: Int, value: Int) {
-        registers[number] = value
+        when (number) {
+            0 -> next = value
+            in 1..3 -> registers[number] = value.and(0xFFFF)
+            4 -> flags = value
+            in 5..7 -> registers[number] = value.and(0xFFFF)
+            8 -> flags = value
+            12 -> interruptHandler = value
+        }
     }
 
     fun getRegister(number: Int): Int {
-        return registers[number]
-    }
-
-   override fun readValue(address: Int, memory: BankedMemory): Int {
-        return when (address) {
-            6 -> (1.shl(addressWidth) - 1).and(0xFF00)
-            7 -> 0 // interrupts not yet implemented
-            8 -> pc
-            9 -> getRegister(1)
-            10 -> getRegister(2)
-            11 -> getRegister(3)
-            12 -> flags
-            13 -> memory.bankMask
+        return when (number) {
+            0 -> pc
+            in 1..3 -> registers[number]
+            4 -> flags
+            in 5..7 -> registers[number]
+            8 -> flags
+            12 -> interruptHandler
             else -> 0
         }
     }
 
-    override fun controlReadable(address: Int, isInitDevice: Boolean): Boolean {
-        return (isInitDevice && address in 6..13) ||
-                super.controlReadable(address, isInitDevice)
+    fun run(): Int {
+        var instructionCount = 0
+        var exitCode = 0 // continue
+        val time = measureTimeMillis {
+            while (exitCode == 0) {
+                val msWord = readMem(id, pc)
+                val lsWord = readMem(id, pc + 1)
+
+                val instruction = Instruction(msWord.shl(16).or(lsWord), this)
+                println("$pc: $instruction")
+                exitCode = instruction.execute()
+                instructionCount += 1
+            }
+        }
+        val returnVal = readMem(id, registers[1])
+        println("Process terminated after $instructionCount instructions in $time ms with return code ".plus(returnVal))
+        return returnVal
     }
 
-    override fun controlUpdatable(address: Int, isInitDevice: Boolean, value: Int): Boolean {
-        return (isInitDevice && address in 8..13) ||
-                super.controlUpdatable(address, isInitDevice, value)
+    override fun getControl(sourceDevice: Int, address: Int): Int {
+        if (isControllingDevice(sourceDevice)) {
+            return when (address) {
+                6 -> (1.shl(addressWidth) - 1).and(0xFF00)
+                7 -> 0 // interrupts not yet implemented
+                8 -> pc
+                9 -> getRegister(1)
+                10 -> getRegister(2)
+                11 -> getRegister(3)
+                12 -> flags
+                13 -> getRegister(4)
+                14 -> getRegister(5)
+                15 -> getRegister(6)
+                else -> super.getControl(sourceDevice, address)
+            }
+        } else {
+            return super.getControl(sourceDevice, address)
+        }
     }
 
     /**
@@ -53,14 +84,17 @@ class Processor(id: Int, addressWidth: Int): Device(id, DeviceType.PROCESSOR, ad
      * 0xC - flags register
      * 0xD - banking control
      */
-    override fun controlUpdated(address: Int, memory: BankedMemory, value: Int) {
+    override fun setControl(sourceDevice: Int, address: Int, value: Int) {
         when (address) {
             8 -> pc = value
             9 -> setRegister(1, value)
             10 -> setRegister(2, value)
             11 -> setRegister(3, value)
             12 -> flags = value
-            13 -> if (memory.bankMask != value) memory.bankMask = value
+            13 -> setRegister(4, value)
+            14 -> setRegister(5, value)
+            15 -> setRegister(6, value)
+            else -> super.setControl(sourceDevice, address, value)
         }
     }
 }

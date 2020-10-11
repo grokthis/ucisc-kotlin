@@ -1,0 +1,131 @@
+########
+# Test simple stack setup and push/pop values
+########
+
+# Test definitions
+#       start return
+TEST    0     2047
+TEST    6     65535
+TEST    14    0
+TEST    24    1024
+TEST    34    10
+TEST    48    10
+TEST    60    65534
+TEST    74    2
+
+# Test a simple push with the maximum immediate
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 2047.imm stack
+   0    4    2047       1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 2047, max signed 12-bit value
+
+# Test a simple push with the maximum immediate via register
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 65535.imm &r2
+   0    4    65535      6    -          0    4
+#  copy &r2 stack push
+   0    6    0          1    0          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 65535
+
+# Test a pop, stack should end up back at 0
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 1024.imm stack push
+   0    4    1024       1    0          1    4
+#  copy stack &r3 pop
+   0    1    0          7   -           1    4
+#  copy &r1 stack
+   0    5    0          1    -          0    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 0
+
+# Test a pop, value should be popped
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 1024.imm stack push
+   0    4    1024       1    0          1    4
+#  copy stack &r3 pop
+   0    1    0          7    -          1    4
+#  copy &r3 stack
+   0    7    0          1    -          0    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 1024
+
+# Test a copy with an offset, used for efficient memcopy
+# Part 1 - check stack unchanged
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 1024.imm stack push
+   0    4    1024       1    0          1    4
+#  copy val 10.imm stack push
+   0    4    10         1    0          1    4
+#  copy stack 1.imm &r2
+   0    5    1          6    -          0    4
+#  copy stack r2 1.imm push
+   0    1    0          2    1          1    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect stack to still be 10
+
+# Test a copy with an offset, used for efficient memcopy
+# Part 2 - check value copied
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 1024.imm stack push
+   0    4    1024       1    0          1    4
+#  copy val 10.imm stack push
+   0    4    10         1    0          1    4
+#  copy stack 1.imm &r2
+   0    5    1          6    -          0    4
+#  copy stack r2 1.imm push
+   0    1    0          2    1          1    4
+#  copy &stack -1.imm &stack
+   0    5    1          5    -          0    4
+#  halt
+   0    0    0          0    -          0    4
+## Expect copied value to be 10
+
+# Test a copy with an offset, used for efficient memcopy
+# Part 2 - check result address
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 1024.imm stack push
+   0    4    1024       1    0          1    4
+#  copy val 10.imm stack push
+   0    4    10         1    0          1    4
+#  copy stack 1.imm &r2
+   0    5    1          6    -          0    4
+#  copy stack r2 1.imm push
+   0    1    0          2    1          1    4
+#  copy &r2 0.imm stack
+   0    6    0          1    0          0    4
+#  halt
+   0    0    0          0    -          0    4
+## Expect copied value to be 65534
+
+# Test a simple push, followed by simple store
+#  op   src  imm        dst  off        inc  eff
+#  copy val 0.imm stack
+   0    4    0          5    -          0    4
+#  copy val 1.imm stack
+   0    4    1          1    -          1    4
+#  copy &r2 stack push
+   0    4    2          1    0          0    4
+#  halt
+   0    0    0          0    -          0    4
+# Expect 2

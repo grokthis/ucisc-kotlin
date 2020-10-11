@@ -1,170 +1,168 @@
 package com.grokthis.ucisc.vm
 
-class Instruction(val word: Int, private val memory: BankedMemory) {
-    private val source = word.and(0x0380).shr(7)
-    private val destination = word.and(0x1C00).shr(10)
-    private val effect = word.and(0x6000).shr(13)
+import java.lang.IllegalStateException
+
+class Instruction(instruction: Int, private val processor: Processor) {
+    private val word = instruction.and(0xFFFF0000.toInt()).shr(16).and(0xFFFF)
+    private val source = word.and(0xF000).shr(12)
+    private val destination = word.and(0x0F00).shr(8)
+    private val increment = word.and(0x0080).shr(7)
+    private val effect = word.and(0x0070).shr(4)
     private val aluCode = word.and(0x000F)
-    private val increment = word.and(0x0040)
-    private val processor: Processor
+    private val immediate: Int
+    private val offset: Int
+
     init {
-        if (memory.device is Processor) {
-            processor = memory.device
+        if (isDestinationMem()) {
+        val sign = if (!isSourceMem() && instruction.and(0x0800) > 0) {
+                0xF000 // Sign extend negative value
+            } else {
+                0x0000
+            }
+            immediate = instruction.and(0x0FFF).or(sign)
+            offset = instruction.and(0xF000).shr(12)
         } else {
-            throw IllegalArgumentException("BankedMemory device must be a processor")
+            immediate = instruction.and(0xFFFF)
+            offset = 0
         }
     }
 
     fun execute(): Int {
         val result = computeResult()
-        if (shouldStore()) {
-            storeResult(result.value, result.address)
-        }
+        val store = shouldStore()
+        if (store) storeResult(result, finalizeDestinationAddress())
 
-        val halt = destination == 0 && source == 0 && processor.next == processor.pc
-        processor.pc = processor.next + if (halt) 1 else 0
-        processor.next = processor.pc + 1
-        return when {
-            halt && isCopy() -> 2 // copy is usually understood as debug
-            halt -> 1 // alu is usually understood as halt
-            else -> 0
-        }
+        val halt = store && destination == 0 && source == 0 && result == processor.pc
+        processor.pc = processor.next
+        processor.next = processor.pc + 2
+
+        return if (halt) 1 else 0
     }
 
-    data class Result(val value: Int, val address: Int = 0)
+    private fun isDestinationMem() = destination in 1..3 || destination in 9..11
+    private fun isSourceMem() = source in 1..3 || source in 5..7
+    private fun isPop() = increment == 1 && !isDestinationMem()
 
-    private fun push() = !incrementIsImmediate() && increment > 0
-    private fun incrementIsImmediate() = signed() && destination !in 1..3
-    private fun signed() = source !in 1..3
-    private fun isCopy() = word.and(0x8000) == 0
-    private fun halfWidth() = isCopy() && source in 1..3 && destination in 1..3
-
-    private fun computeResult(updateFlags: Boolean = true): Result {
-        val immediateValues = extractImmediateValues()
-        val sourceValue = sourceValue(immediateValues.first())
-        val destinationImmediate = if (immediateValues.size > 1) immediateValues.last() else 0
-        return when {
-            isCopy() -> Result(sourceValue, destinationAddress(destinationImmediate))
-            else -> {
-                val result = destinationValue(destinationImmediate)
-                Result(compute(sourceValue, result.value, updateFlags), result.address)
-            }
-        }
+    private fun computeResult(updateFlags: Boolean = true): Int {
+        val sourceValue = sourceValue()
+        val result = destinationValue()
+        return compute(sourceValue, result, updateFlags).and(0xFFFF)
     }
 
     private fun shouldStore(): Boolean {
         val flags = processor.flags
-        val zero = flags.and(0x0002) != 0
+        val zero = flags.and(0x0001) != 0
+        val negative = flags.and(0x0002) != 0
+
         return when (effect) {
-            3 -> true
             0 -> zero
-            1 -> !zero
-            2 -> flags.and(0x0004) != 0
+            1 -> !zero 2 -> negative
+            3 -> false
+            4 -> true
+            5 -> flags.and(0x0008) != 0
+            6 -> flags.and(0x0010) != 0
+            7 -> flags.and(0x0020) != 0
             else -> false
         }
     }
 
     private fun storeResult(value: Int, address: Int) {
         when (destination) {
-            0 -> processor.next = value
-            in 1..3 -> {
-                if (push()) {
-                    val regVal = (processor.getRegister(destination) - 1).and(0xFFFF)
-                    processor.setRegister(destination, regVal)
-                }
-                memory.writeMem(processor.id, address, value)
-            }
-            4 -> memory.bankMask = value
+            0 -> processor.next = value.and(0xFFFF)
+            in 1..3 -> processor.writeMem(processor.id, address, value)
+            4 -> processor.flags = value.and(0xFFFF)
             in 5..7 -> processor.setRegister(destination - 4, value)
+            8 -> processor.flags = value.and(0xFFFF)
+            in 9..11 -> processor.writeBanked(address, value)
+            12 -> processor.interruptHandler = value.and(0xFFFF)
+            in 13..15 -> processor.setRegister(destination - 8, value)
+        }
+        if (isPop()) {
+            val regNum: Int = when (source) {
+                in 1..3 -> source
+                in 5..7 -> source - 4
+                in 9..11 -> source - 4
+                in 13..15 -> source - 8
+                else -> throw IllegalStateException("Illegal register value") // Should never be true
+            }
+            processor.setRegister(regNum, (processor.getRegister(regNum) + 1).and(0xFFFF))
         }
     }
 
-    private fun extractImmediateValues(): Array<Int> {
-        var immediateMask: Int
-        var immediateShift = 0
-        if (isCopy()) {
-            immediateMask = 0x003F
-        } else {
-            immediateMask = 0x0030
-            immediateShift = 4
-        }
 
-        val signMask: Int
-        if (incrementIsImmediate()) {
-            signMask = 0x0040
-            immediateMask = immediateMask.or(signMask)
-        } else {
-            signMask = 0x0020
-        }
-
-        return when {
-            (signed() && (word.and(signMask) != 0)) -> {
-                // Sign extend and shift immediate
-                arrayOf(word.and(immediateMask).inv().and(immediateMask).inv().shr(immediateShift))
-            }
-            halfWidth() -> {
-                arrayOf(
-                        word.and(immediateMask).shr(immediateShift + 3),
-                        word.and(immediateMask.shr(3)).shr(immediateShift)
-                )
-            }
-            else -> {
-                arrayOf(word.and(immediateMask).shr(immediateShift))
-            }
-        }
-    }
-
-    private fun sourceValue(immediate: Int): Int {
+    private fun sourceValue(): Int {
         return when (source) {
             0 -> (processor.pc + immediate).and(0xFFFF)
-            in 1..3 -> memory.readMem(processor.id, processor.getRegister(source) + immediate)
+            in 1..3 -> processor.readMem(processor.id, processor.getRegister(source) + immediate)
             4 -> immediate
             in 5..7 -> processor.getRegister(source - 4) + immediate
+            8 -> processor.flags
+            in 9..11 -> processor.readBanked(processor.getRegister(source - 4) + immediate)
+            12 -> processor.interruptHandler
+            in 13..15 -> processor.getRegister(source - 8) + immediate
             else -> 0
         }
     }
 
-    private fun destinationValue(immediate: Int): Result {
+    private fun destinationValue(): Int {
         return when (destination) {
-            0 -> Result((processor.pc + immediate).and(0xFFFF))
-            in 1..3 -> {
-                val destinationAddress = processor.getRegister(destination) + immediate
-                val pushedAddress = if (push()) (destinationAddress - 1).and(0xFFFF) else destinationAddress
-                Result(memory.readMem(processor.id, destinationAddress), pushedAddress)
-            }
-            4 -> Result(memory.bankMask)
-            in 5..7 -> Result(processor.getRegister(destination - 4) + immediate)
-            else -> Result(0)
+            0 -> processor.pc
+            in 1..3 -> processor.readMem(processor.id, processor.getRegister(destination) + offset)
+            4 -> processor.flags
+            in 5..7 -> processor.getRegister(destination - 4)
+            8 -> processor.flags
+            in 9..11 -> processor.readBanked(processor.getRegister(destination - 4) + offset)
+            12 -> processor.interruptHandler
+            in 13..15 -> processor.getRegister(destination - 8)
+            else -> 0
         }
     }
 
-    private fun destinationAddress(immediate: Int): Int {
-        return when (destination) {
-            in 1..3 -> {
-                val destinationAddress = (processor.getRegister(destination) + immediate).and(0xFFFF)
-                if (push()) (destinationAddress - 1).and(0xFFFF) else destinationAddress
-            }
-            else -> 0
-        }
+    private fun finalizeDestinationAddress(): Int {
+       return when (destination) {
+           in 1..3 -> {
+               val regValue = processor.getRegister(destination)
+               var destinationAddress = regValue + offset
+               if (increment == 1) {
+                   destinationAddress = (destinationAddress - 1).and(0xFFFF)
+                   processor.setRegister(destination, regValue - 1)
+               }
+               destinationAddress
+           }
+           in 9..11 -> {
+               val regValue = processor.getRegister(destination - 4)
+               var destinationAddress = regValue + offset
+               if (increment == 1) {
+                   destinationAddress -= 1
+                   processor.setRegister(destination - 4, regValue - 1)
+               }
+               destinationAddress
+           }
+           else -> 0
+       }
     }
 
     private fun signedModeOn() = processor.flags.and(0x0010) != 0
 
-    private fun compute(sourceValue: Int, destinationValue: Int, updateFlags: Boolean): Int {
+    private fun compute(sourceValue: Int, destinationValue: Int, updateFlags: Boolean = true): Int {
+        var doFlags = updateFlags
         var overflow = false
         var overflowReg = 0
-        val computed = when(aluCode) {
-            0 -> sourceValue.inv().and(0xFFFF)
+        var error = false
+        val computed = when (aluCode) {
+            0 -> {
+                doFlags = false
+                sourceValue
+            }
             1 -> sourceValue.and(destinationValue).and(0xFFFF)
             2 -> sourceValue.or(destinationValue).and(0xFFFF)
             3 -> sourceValue.xor(destinationValue).and(0xFFFF)
-            4 -> (sourceValue * -1).and(0xFFFF)
+            4 -> sourceValue.inv().and(0xFFFF)
             5 -> {
                 val value = destinationValue.shl(sourceValue)
                 overflowReg = value.and(0xFFFF0000.toInt()).shr(16).and(0xFFFF)
                 value.and(0xFFFF)
-            }
-            6 -> {
+            } 6 -> {
                 overflowReg = if (sourceValue > 16) {
                     destinationValue
                 } else {
@@ -210,31 +208,38 @@ class Instruction(val word: Int, private val memory: BankedMemory) {
                 // divide
                 val arg1 = wordToSignedInt(destinationValue)
                 val arg2 = wordToSignedInt(sourceValue)
-                val value = arg1 / arg2
-                overflowReg = arg1 - (value * arg2)
-                value.and(0xFFFF)
+                if (arg2 == 0) {
+                    error = true
+                    arg1
+                } else {
+                    val value = arg1 / arg2
+                    overflowReg = arg1 - (value * arg2)
+                    value.and(0xFFFF)
+                }
             }
             14 -> {
                 // page start for sourceValue as address
-                sourceValue.and(0xFFC)
+                sourceValue.and(processor.overflow)
             }
             15 -> {
                 // overflow + sourceValue
-                sourceValue + processor.overflow
+                overflowReg = sourceValue.and(destinationValue)
+                overflowReg
             }
             else -> {
                 throw IllegalArgumentException("Invalid ALU Code: $aluCode")
             }
         }
 
-        val zero = computed == 0
-        val negative = computed.and(0x8000) != 0
-        if (updateFlags) {
+        if (doFlags) {
+            val zero = computed == 0
+            val negative = computed.and(0x8000) != 0
+            val carry = overflowReg.and(0x1) > 0
             processor.flags =
-                    (if (overflow) 1 else 0).
-                    or(if (zero) 2 else 0).
-                    or(if (negative) 4 else 0).
-                    or(processor.flags.and(0xFFF0))
+                (if (error) 0x10 else 0).or(if (overflow) 8 else 0).or(if (carry) 4 else 0).or(if (negative) 2
+                else 0)
+                    .or(if (zero) 1 else
+                        0).or(processor.flags.and(0xFFF0))
             processor.overflow = overflowReg
         }
         return computed
@@ -246,5 +251,9 @@ class Instruction(val word: Int, private val memory: BankedMemory) {
         } else {
             value
         }
+    }
+
+    override fun toString(): String {
+        return "$aluCode.op $source.arg $immediate.imm $destination.arg $offset.imm $increment.inc $effect.eff"
     }
 }
