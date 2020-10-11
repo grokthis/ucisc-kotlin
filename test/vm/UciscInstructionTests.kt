@@ -1,12 +1,10 @@
 package com.grokthis.ucisc.vm
 
 import com.grokthis.ucisc.compile.MicroAssembler
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.DynamicTest.dynamicTest
 import org.junit.jupiter.api.TestFactory
 import java.io.File
-import kotlin.math.exp
 import kotlin.test.assertEquals
 
 class UciscInstructionTests {
