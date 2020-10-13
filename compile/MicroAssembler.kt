@@ -18,7 +18,15 @@ class MicroAssembler {
                 val test = line.substring(4).trim().split(" ")
                 tests[test.first().toInt()] = test.last().toInt()
             } else if (line.trim().isNotEmpty() && !line.startsWith("#")) {
-                val args: List<String> = line.split(" ").filter { it != "" }
+                var args: List<String> = line.split(" ").filter { it != "" }
+                args = args.map {
+                    if (it == "X" || it == "-") {
+                        // X is a temporary placeholder used for debugging, - is zero used for irrelevant args
+                        "0"
+                    } else {
+                        it
+                    }
+                }
                 var encoded = args[1].toInt().and(0xF).shl(28)
                 encoded = encoded.or(args[3].toInt().and(0xF).shl(24))
                 encoded = encoded.or(args[5].toInt().and(0x1).shl(23))

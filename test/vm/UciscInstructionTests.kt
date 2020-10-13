@@ -36,7 +36,7 @@ class UciscInstructionTests {
     }
 
     fun createProcessor(instructions: List<Int>): Processor {
-        val writer = TerminalWriter(100)
+        val writer = SerialConnection(100)
         // val reader = TerminalReader(101)
         val processor = Processor(1, 16)
         processor.connected[16] = writer

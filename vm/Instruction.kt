@@ -4,13 +4,13 @@ import java.lang.IllegalStateException
 
 class Instruction(instruction: Int, private val processor: Processor) {
     private val word = instruction.and(0xFFFF0000.toInt()).shr(16).and(0xFFFF)
-    private val source = word.and(0xF000).shr(12)
-    private val destination = word.and(0x0F00).shr(8)
-    private val increment = word.and(0x0080).shr(7)
-    private val effect = word.and(0x0070).shr(4)
-    private val aluCode = word.and(0x000F)
-    private val immediate: Int
-    private val offset: Int
+    val source = word.and(0xF000).shr(12)
+    val destination = word.and(0x0F00).shr(8)
+    val increment = word.and(0x0080).shr(7)
+    val effect = word.and(0x0070).shr(4)
+    val aluCode = word.and(0x000F)
+    val immediate: Int
+    val offset: Int
 
     init {
         if (isDestinationMem()) {
@@ -43,7 +43,7 @@ class Instruction(instruction: Int, private val processor: Processor) {
     private fun isSourceMem() = source in 1..3 || source in 5..7
     private fun isPop() = increment == 1 && !isDestinationMem()
 
-    private fun computeResult(updateFlags: Boolean = true): Int {
+    fun computeResult(updateFlags: Boolean = true): Int {
         val sourceValue = sourceValue()
         val result = destinationValue()
         return compute(sourceValue, result, updateFlags).and(0xFFFF)
@@ -90,7 +90,7 @@ class Instruction(instruction: Int, private val processor: Processor) {
     }
 
 
-    private fun sourceValue(): Int {
+    fun sourceValue(): Int {
         return when (source) {
             0 -> (processor.pc + immediate).and(0xFFFF)
             in 1..3 -> processor.readMem(processor.id, processor.getRegister(source) + immediate)
@@ -104,7 +104,7 @@ class Instruction(instruction: Int, private val processor: Processor) {
         }
     }
 
-    private fun destinationValue(): Int {
+    fun destinationValue(): Int {
         return when (destination) {
             0 -> processor.pc
             in 1..3 -> processor.readMem(processor.id, processor.getRegister(destination) + offset)

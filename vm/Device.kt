@@ -37,10 +37,13 @@ open class Device(
     var enabled = true
 
     init {
-        if (addressWidth < 8 || addressWidth > 16) {
-            throw IllegalArgumentException("Address width must be between 8 and 16")
+        data = if (addressWidth == 0) {
+            IntArray(0)
+        } else if (addressWidth < 8 || addressWidth > 16) {
+            throw IllegalArgumentException("Address width must be 0 or between 8 and 16")
+        } else {
+            IntArray(1.shl(addressWidth)) { 0 }
         }
-        data = IntArray(1.shl(addressWidth)) { 0 }
     }
 
     fun loadFromFile(fileName: String) {
@@ -61,7 +64,7 @@ open class Device(
         instructions.toIntArray().copyInto(data)
     }
 
-    fun isHalted(): Boolean = flags.and(0x8000) > 0
+    fun isHalted(): Boolean = flags.and(0xA000) > 0
 
     fun writeMem(sourceDevice: Int, address: Int, value: Int): Boolean {
         if (sourceDevice != id && (sourceDevice != initDevice || !isHalted())) {
@@ -114,7 +117,7 @@ open class Device(
         if (address < 4096) {
             // writing control words
             val index = address.shr(4)
-            if (index < connected.size) {
+            if (connected[index] != null) {
                 connected[index]?.setControl(id, address.and(0xF), value)
             }
         } else {
@@ -139,7 +142,7 @@ open class Device(
     }
 
     protected open fun setControl(sourceDevice: Int, address: Int, value: Int) {
-        if (isControllingDevice(sourceDevice)) {
+        if ((address == 2 && initDevice == 0) || isControllingDevice(sourceDevice)) {
             when (address) {
                 1 -> bankIndex = value.and(0xFF00).shr(8)
                 2 -> initDevice = value.and(0xFFFF)
@@ -153,7 +156,7 @@ open class Device(
     }
 
     protected open fun getControl(sourceDevice: Int, controlAddress: Int): Int {
-        return if (isControllingDevice(sourceDevice)) {
+        return if (controlAddress in 0..2 || isControllingDevice(sourceDevice)) {
             when (controlAddress) {
                 0 -> id
                 1 -> bankIndex.shl(8).or(type.code)

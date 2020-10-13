@@ -11,6 +11,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
     var next: Int = 2
     var overflow: Int = 0
     private val registers = Array(8) { 0 }
+    var debug = true
 
     fun setRegister(number: Int, value: Int) {
         when (number) {
@@ -44,7 +45,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
                 val lsWord = readMem(id, pc + 1)
 
                 val instruction = Instruction(msWord.shl(16).or(lsWord), this)
-                println("$pc: $instruction")
+                if (debug) printInstruction(instruction)
                 exitCode = instruction.execute()
                 instructionCount += 1
             }
@@ -52,6 +53,44 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
         val returnVal = readMem(id, registers[1])
         println("Process terminated after $instructionCount instructions in $time ms with return code ".plus(returnVal))
         return returnVal
+    }
+
+    private fun stackString(): String {
+        var address = registers[1].and(0xFFFF)
+        val endAddress = if (address > 0) (address + 10) else address
+        var result = String.format("%04X:", address)
+        while (address > 0 && address < endAddress && address <= 0xFFFF) {
+            result += String.format(" %04X", readMem(id, address))
+            address += 1
+        }
+        return result
+    }
+
+    private fun printInstruction(instruction: Instruction) {
+        val srcVal = instruction.sourceValue()
+        val op = when (instruction.aluCode) {
+            0 -> "copy"
+            1 -> "and "
+            2 -> " or "
+            3 -> "xor "
+            4 -> "inv "
+            5 -> "shl "
+            6 -> "shr "
+            7 -> "swap"
+            8 -> "msb "
+            9 -> "lsb "
+            10 -> "add "
+            11 -> "sub "
+            12 -> "mult"
+            13 -> "div "
+            14 -> "rflw"
+            15 -> "wflw"
+            else -> "????"
+        }
+        val dstVal = instruction.destinationValue()
+        val result = instruction.computeResult(false)
+        println(String.format("Stack: %s", stackString()))
+        println(String.format("%04X: %s - %05d %s %05d = %05d", pc, instruction.toString(), srcVal, op, dstVal, result))
     }
 
     override fun getControl(sourceDevice: Int, address: Int): Int {
