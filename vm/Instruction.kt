@@ -43,13 +43,13 @@ class Instruction(instruction: Int, private val processor: Processor) {
     private fun isSourceMem() = source in 1..3 || source in 5..7
     private fun isPop() = increment == 1 && !isDestinationMem()
 
-    fun computeResult(updateFlags: Boolean = true): Int {
-        val sourceValue = sourceValue()
-        val result = destinationValue()
-        return compute(sourceValue, result, updateFlags).and(0xFFFF)
+    fun computeResult(debug: Boolean = false): Int {
+        val sourceValue = sourceValue(debug)
+        val result = destinationValue(debug)
+        return compute(sourceValue, result, !debug).and(0xFFFF)
     }
 
-    private fun shouldStore(): Boolean {
+    fun shouldStore(): Boolean {
         val flags = processor.flags
         val zero = flags.and(0x0001) != 0
         val negative = flags.and(0x0002) != 0
@@ -90,28 +90,28 @@ class Instruction(instruction: Int, private val processor: Processor) {
     }
 
 
-    fun sourceValue(): Int {
+    fun sourceValue(debug: Boolean): Int {
         return when (source) {
             0 -> (processor.pc + immediate).and(0xFFFF)
             in 1..3 -> processor.readMem(processor.id, processor.getRegister(source) + immediate)
             4 -> immediate
             in 5..7 -> processor.getRegister(source - 4) + immediate
             8 -> processor.flags
-            in 9..11 -> processor.readBanked(processor.getRegister(source - 4) + immediate)
+            in 9..11 -> processor.readBanked(processor.getRegister(source - 4) + immediate, debug)
             12 -> processor.interruptHandler
             in 13..15 -> processor.getRegister(source - 8) + immediate
             else -> 0
         }
     }
 
-    fun destinationValue(): Int {
+    fun destinationValue(debug: Boolean): Int {
         return when (destination) {
             0 -> processor.pc
             in 1..3 -> processor.readMem(processor.id, processor.getRegister(destination) + offset)
             4 -> processor.flags
             in 5..7 -> processor.getRegister(destination - 4)
             8 -> processor.flags
-            in 9..11 -> processor.readBanked(processor.getRegister(destination - 4) + offset)
+            in 9..11 -> processor.readBanked(processor.getRegister(destination - 4) + offset, debug)
             12 -> processor.interruptHandler
             in 13..15 -> processor.getRegister(destination - 8)
             else -> 0

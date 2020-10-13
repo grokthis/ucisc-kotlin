@@ -127,13 +127,13 @@ open class Device(
         }
     }
 
-    fun readBanked(address: Int): Int {
+    fun readBanked(address: Int, debug: Boolean): Int {
         // If less than 4096, writing control words, otherwise banked block
         return when (val index = address.shr(if (address < 4096) 4 else 8)) {
             0 -> {
-                getControl(id, address.and(0xF))
+                getControl(id, address.and(0xF), debug)
             }
-            else -> connected[index]?.getControl(id, address.and(0xF)) ?: 0
+            else -> connected[index]?.getControl(id, address.and(0xF), debug) ?: 0
         }
     }
 
@@ -155,7 +155,7 @@ open class Device(
         }
     }
 
-    protected open fun getControl(sourceDevice: Int, controlAddress: Int): Int {
+    protected open fun getControl(sourceDevice: Int, controlAddress: Int, debug: Boolean): Int {
         return if (controlAddress in 0..2 || isControllingDevice(sourceDevice)) {
             when (controlAddress) {
                 0 -> id

@@ -11,7 +11,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
     var next: Int = 2
     var overflow: Int = 0
     private val registers = Array(8) { 0 }
-    var debug = true
+    var debug = false
 
     fun setRegister(number: Int, value: Int) {
         when (number) {
@@ -40,13 +40,18 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
         var instructionCount = 0
         var exitCode = 0 // continue
         val time = measureTimeMillis {
-            while (exitCode == 0) {
+            while (exitCode == 0 && instructionCount < 100000000) {
                 val msWord = readMem(id, pc)
                 val lsWord = readMem(id, pc + 1)
 
                 val instruction = Instruction(msWord.shl(16).or(lsWord), this)
                 if (debug) printInstruction(instruction)
                 exitCode = instruction.execute()
+                if (exitCode != 0 && debug) {
+                    exitCode = 0
+                    pc += 2
+                    next = pc + 2
+                }
                 instructionCount += 1
             }
         }
@@ -67,7 +72,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
     }
 
     private fun printInstruction(instruction: Instruction) {
-        val srcVal = instruction.sourceValue()
+        val srcVal = instruction.sourceValue(true)
         val op = when (instruction.aluCode) {
             0 -> "copy"
             1 -> "and "
@@ -87,13 +92,15 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
             15 -> "wflw"
             else -> "????"
         }
-        val dstVal = instruction.destinationValue()
-        val result = instruction.computeResult(false)
+        val dstVal = instruction.destinationValue(true)
+        val store = instruction.shouldStore()
+        val result = if (store) instruction.computeResult(true) else dstVal
+
         println(String.format("Stack: %s", stackString()))
         println(String.format("%04X: %s - %05d %s %05d = %05d", pc, instruction.toString(), srcVal, op, dstVal, result))
     }
 
-    override fun getControl(sourceDevice: Int, address: Int): Int {
+    override fun getControl(sourceDevice: Int, address: Int, debug: Boolean): Int {
         if (isControllingDevice(sourceDevice)) {
             return when (address) {
                 6 -> (1.shl(addressWidth) - 1).and(0xFF00)
@@ -106,10 +113,10 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
                 13 -> getRegister(4)
                 14 -> getRegister(5)
                 15 -> getRegister(6)
-                else -> super.getControl(sourceDevice, address)
+                else -> super.getControl(sourceDevice, address, debug)
             }
         } else {
-            return super.getControl(sourceDevice, address)
+            return super.getControl(sourceDevice, address, debug)
         }
     }
 

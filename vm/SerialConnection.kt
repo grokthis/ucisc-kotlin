@@ -50,7 +50,7 @@ class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
 
     }
 
-    override fun getControl(sourceDevice: Int, address: Int): Int {
+    override fun getControl(sourceDevice: Int, address: Int, debug: Boolean): Int {
         return when (isControllingDevice(sourceDevice)) {
             true -> {
                 when (address) {
@@ -60,7 +60,9 @@ class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
                     8 -> 0
                     9 -> 2.shl(8).or(rxAvailable)
                     10 -> {
-                        if (rxAvailable > 0) {
+                        if (debug && rxAvailable > 0) {
+                            rxData[rxOffset].toInt().and(0xFF)
+                        } else if (rxAvailable > 0) {
                             rxAvailable -= 1
                             rxOffset += 1
                             rxData[rxOffset - 1].toInt().and(0xFF)
@@ -68,10 +70,10 @@ class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
                             (Math.random() * 0xFFFF).toInt().and(0xFF)
                         }
                     }
-                    else -> super.getControl(sourceDevice, address)
+                    else -> super.getControl(sourceDevice, address, debug)
                 }
             }
-            false -> super.getControl(sourceDevice, address)
+            false -> super.getControl(sourceDevice, address, debug)
         }
     }
 
