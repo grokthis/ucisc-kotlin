@@ -8,7 +8,7 @@ class MicroAssembler {
         }
         val instructions = mutableListOf<Int>()
         val immediateLabels = mutableMapOf<Int, String>()
-        val offsetLabels = mutableMapOf<Int, String>()
+        val defines = mutableMapOf<String, String>()
         val tests = mutableMapOf<Int, Int>()
         val labels = mutableMapOf<String, Int>()
 
@@ -17,6 +17,9 @@ class MicroAssembler {
             if (line.startsWith(":")) {
                 var args = line.split(" ")
                 labels[args.first().substring(1)] = instructions.size
+            } else if (line.startsWith("def")) {
+                var args = line.split(" ")
+                defines[args[1]] = args[3] // def X as Y
             } else if (line.startsWith("TEST")) {
                 val test = line.substring(4).trim().split(" ")
                 tests[test.first().toInt()] = test.last().toInt()
@@ -25,14 +28,12 @@ class MicroAssembler {
                 var encoded = 0
                 var imm = 0
                 var dest = 0
-                args.forEachIndexed { index, arg ->
+                args.forEachIndexed { index, _arg ->
+                    val arg = defines[_arg] ?: _arg
                     val value = when {
                         arg == "-" -> 0 // - is zero used for irrelevant args
                         arg.toIntOrNull() == null -> {
-                            when (index) {
-                                2 -> immediateLabels[instructions.size] = arg
-                                4 -> offsetLabels[instructions.size] = arg
-                            }
+                            if (index == 2) immediateLabels[instructions.size] = arg
                             0
                         }
                         else -> arg.toInt()
@@ -64,17 +65,19 @@ class MicroAssembler {
             }
         }
 
-        offsetLabels.forEach {
-            val ins = it.key
-            val label = it.value
-            val offset = labels[label] ?: 0
-            instructions[ins] = instructions[ins + 1].or(offset.shl(12))
-        }
         immediateLabels.forEach {
             val ins = it.key
+            val topWord = instructions[ins]
             val label = it.value
-            val imm = labels[label] ?: 0
-            instructions[ins] = instructions[ins + 1].or(imm)
+            val displacement = topWord.and(0xF000) == 0
+            var imm = labels[label] ?: 0
+            val immMask = when (topWord.and(0x0F00).shr(8)) {
+                in 1..3, in 9..11 -> 0x0FFF
+                else -> 0xFFFF
+            }
+            imm = if (displacement) (imm - ins).and(immMask) else imm
+
+            instructions[ins + 1] = instructions[ins + 1].or(imm)
         }
         return CompiledCode(instructions, tests)
     }

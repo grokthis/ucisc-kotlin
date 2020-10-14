@@ -11,7 +11,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
     var next: Int = 2
     var overflow: Int = 0
     private val registers = Array(8) { 0 }
-    var debug = false
+    var debug = true
 
     fun setRegister(number: Int, value: Int) {
         when (number) {
