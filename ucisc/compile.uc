@@ -78,6 +78,7 @@ def RxRead as 10
 
 def cEOT as 3
 def cNewline as 10
+def cSpace as 32
 def cHash as 35
 def cZero as 48
 def cNine as 57
@@ -135,7 +136,7 @@ def cTokenEnd as 127
 # - Immediate label length, immediate label string (1 word per char)
 # - Label length, label string (1 word per char)
 #
-# - Defines are: pointer to next, name length, name words, val length, val words
+# - Defines are: pointer to next, val length, val words, name length, name words
 #
 # Compiler can handle 40k words of code or 20k instructions before running out of space.
 # This should be sufficient for most applications that run on the system as the other 24k
@@ -144,27 +145,164 @@ def cTokenEnd as 127
 #
 # A: 26
 #  op   src  imm        dst  off        inc  eff
-   copy val  2          stk  0          push store  # Push defines list MS nibble
-   shl  val  11         stk  0          none store  # Convert defines list nibble into pointer
-   copy val  0          stk  0          push store  # Push instruction list pointer
+   copy val  8192       &r2  -          -    store    # Load defines pointer into r2
+   copy val  0          r2   0          push store    # Push last, empty define
+   copy val  0          r2   0          push store    # Push last, empty define
+   copy val  0          r2   0          push store    # Push last, empty define
 
-   copy val  0          stk  0          push store  # Push negative flag to stack (0)
-   copy val  0          stk  0          push store  # Push arg count to stack (0)
+   copy &r2  0          stk  0          push store    # Push defines pointer to stack
+   copy val  0          stk  0          push store    # Push instruction list pointer
+   copy val  0          stk  0          push store    # Push arg count to stack
+   copy val  0          stk  0          push store    # Push arg length to stack
 
-#####################
-# Step 1 - Next Arg #
-#####################
+#########################
+# Step 1 - Get Next Arg #
+#########################
+#  op   src  imm        dst  off        inc  eff
+   copy pc   6          stk  0          push store    # Copy return address to stack
+   copy stk  5          stk  0          push store    # Copy deviceControl to top of stack as arg
+   copy pc   nextArg    pc   -          -    store    # Call nextArg
+
+#################
+# Check for def #
+#################
+#  op   src  imm        dst  off        inc  eff
+   sub  val  3          stk  0          none flags    # Check if length is correct
+   copy pc   notDef     pc   -          -    !zero?   # If length is wrong, notDef
+   sub  val  102        stk  1          none flags    # Subtract f (string in reverse order)
+   copy pc   notDef     pc   -          -    !zero?   # If f is wrong, notDef
+   sub  val  101        stk  2          none flags    # Subtract f (string in reverse order)
+   copy pc   notDef     pc   -          -    !zero?   # If e is wrong, notDef
+   sub  val  100        stk  3          none flags    # Subtract f (string in reverse order)
+   copy pc   notDef     pc   -          -    !zero?   # If d is wrong, notDef
+# It is a def!
+# next arg should be name
+   add  stk  0          &stk -          -    store    # Pop string chars from stack
+   copy &stk 1          &stk -          -    store    # Pop string length from stack
+
+   copy pc   6          stk  0          push store    # Copy return address to stack
+   copy stk  4          stk  0          push store    # Copy deviceControl to top of stack as arg
+   copy pc   nextArg    pc   -          -    store    # Call nextArg
+
+   copy &stk 2          &r2  -          -    store    # Copy stack offset to defs pointer
+   add  stk  0          &r2  -          -    store    # Add string length to defs pointer
+   copy r2   0          &r2  -          -    store    # Load defs pointer to r2
+
+#  Create new def
+   copy &stk 0          &r3  -          -    store    # Copy stack reference to r3
+   add  stk  0          &r3  -          -    store    # Point r3 to end of string
+
+   copy val  0          r2   0          push store    # Push name length of 0
+# while remaining to copy to def
+:whCpyToDef
+   sub  r2   0          stk  0          none flags    # Break if zero
+   copy pc   bkCpyToDef pc   -          none zero?    # Break out of copy def if length has been copied
+   add  val  1          r2   0          push store    # add 1 to length, push
+   copy r3   0          r2   1          none store    # Copy char to def
+   copy &r3  -1         &r3  -          -    store    # Decrement r3 pointer
+   copy pc   whCpyToDef pc   -          -    store    # Loop to next char
+:bkCpyToDef
+   add  stk  0          &stk -          -    store    # Pop string chars from stack
+   copy &stk 1          &stk -          -    store    # Pop string length from stack
+   copy val  0          r2   0          push store    # Push label length of 0
+   copy &r2  2          r2   0          push store    # Push address of next define
+   add  r2   2          r2   0          none store    # Add string length to next define addr
+
+# second arg should be "as"
+   copy pc   6          stk  0          push store    # Copy return address to stack
+   copy stk  3          stk  0          push store    # Copy deviceControl to top of stack as arg
+   copy pc   nextArg    pc   -          -    store    # Call nextArg
+
+   sub  val  2          stk  0          none flags    # Check if length is correct
+   copy pc   notAs      pc   -          -    !zero?   # If length is wrong, notDef
+   sub  val  115        stk  1          none flags    # Subtract f (string in reverse order)
+   copy pc   notAs      pc   -          -    !zero?   # If f is wrong, notDef
+   sub  val  97         stk  2          none flags    # Subtract f (string in reverse order)
+   copy pc   notAs      pc   -          -    !zero?   # If e is wrong, notDef
+# Handle as (just get next arg)
+   copy pc   0          pc   -          -    store    # Halt for debug
+   add  stk  0          &stk -          -    store    # Pop string chars from stack
+   copy &stk 1          &stk -          -    store    # Pop string length from stack
+   copy pc   6          stk  0          push store    # Copy return address to stack
+   copy stk  2          stk  0          push store    # Copy deviceControl to top of stack as arg
+   copy pc   nextArg    pc   -          -    store    # Call nextArg
+
+:notAs
+   copy pc   0          pc   -          -    store    # Halt for debug
+
+# third arg should be value
+
+:notDef
+
+################
+# Fun :nextArg #
+################
 
 # Get next char, if EOT we are done, transmit over Tx
 # A: 36
+# var string = :nextArg deviceControl = stack
+:nextArg
 #  op   src  imm        dst  off        inc  eff
    copy pc   6          stk  0          push store  # Copy return address to stack
-   copy stk  5          stk  0          push store  # Copy deviceControl to top of stack as arg
+   copy stk  1          stk  0          push store  # Copy deviceControl to top of stack as arg
    copy pc   nextToken  pc   -          -    store  # Call nextToken
    sub  val  cEOT       stk  0          none flags  # 42: Subtract ASCII EOT from return char
    copy pc   0          pc   -          -    zero?  # Halt if zero for debug, will be jump to end
 
-   copy pc   0          pc   -          -    store  # Halt for debug
+# If arg is not started, throw away spaces
+#  op   src  imm        dst  off        inc  eff
+   add  val  0          stk  2          none flags  # Add 0 to arg length to set flags
+   copy pc   capture    pc   -          -    !zero? # Token already started, capture it
+   sub  val  cSpace     stk  0          none flags  # Subtract space char from returned char
+   copy &r1  1          &r1  -          -    zero?  # pop char if space
+   copy pc   nextArg    pc   -          -    zero?  # loop back to beginning if space and arg is zero len
+
+# Else, capture all token chars until white space
+:capture
+#  op   src  imm        dst  off        inc  eff
+   sub  val  cSpace     stk  0          none flags  # Subtract space from character
+   copy &r1  1          &r1  0          -    zero?  # pop extra char off stack
+   copy pc   endArg     pc   -          -    zero?  # Jump to end of arg if space
+# Capture the character in the arg
+   copy stk  0          stk  0          push store  # duplicate char
+   copy stk  2          stk  1          none store  # duplicate Rx device on stack
+   copy stk  3          stk  2          none store  # duplicate return address
+   copy stk  4          stk  3          none store  # duplicate arg length
+   add  val  1          stk  3          none store  # add 1 to arg length
+   copy stk  0          stk  4          none store  # copy char into string, note string order is reversed
+   copy &r1  1          &r1  0          -    store  # pop extra char off stack
+   copy pc   nextArg    pc   -          -    store  # loop jump to get next char
+
+:endArg
+# We hit a space and have non-zero arg length
+#  op   src  imm        dst  off        inc  eff
+   copy &stk 1          &stk 0          -    store  # pop device off stack, return string on stack
+   copy stk  0          pc   0          pop  store  # pop return address into pc
+
+#  first, if def, create a new definition
+
+#  first, substitute any existing defs
+#  if first arg, test for TEST line and parse
+#  if first arg, test for def and parse
+#  else parse number
+#  when (argCount)
+#    0 -> op code, upper.or(number.and(0xF))
+#    1 -> src code, upper.or(number.and(0xF).shl(12))
+#    2 -> imm val, store in data structure
+#    3 -> dest code, upper.or(number.and(0xF).shl(8))
+#    4 -> source val, lower.or(number.and(0xF).shl(12))
+#    5 -> increment val, upper.or(number.and(0x1).shl(7))
+#    6 -> effect val, upper.or(number.and(0x7).shl(4))
+#  else increment arg found
+
+###########
+# strComp #
+###########
+# var result = :strComp source, target = stack
+# Returns a 0 (false) or 1 (true) if the source and target strings match
+# Sets the flags register appropriately for zero/not zero before return
+#  op   src  imm        dst  off        inc  eff
+
 
 ##########
 # readRx #
@@ -214,6 +352,9 @@ def cTokenEnd as 127
 
    sub  val  cEOT       stk  0          none flags  # Subtract 3 (end of text) from return char
    copy pc   found      pc   -          -    none   # Break to found if zero (end of text)
+
+   sub  val  cSpace     stk  0          none flags  # Subtract space from return char
+   copy pc   found      pc   -          -    none   # Break to found if zero
 
    sub  val  cTokenStrt stk  0          none flags  # Subtract ascii `!` from returned value
    copy pc   comment    pc   -          -    neg?   # Break to comment if negative (it's not a token)
