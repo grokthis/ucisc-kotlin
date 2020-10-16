@@ -20,13 +20,14 @@ class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
             }
         }
     private var txAvailable = 2
-    var baud = 115200
+    var baud = 230400
     init {
         flags = 0x2000
     }
 
     private val runner = Thread(Runnable {
         while (enabled) {
+            val nanoStart = System.nanoTime()
             synchronized(this) {
                 if (rxAvailable < 2 && (rxOffset + rxAvailable) < rxData.length) {
                     rxAvailable += 1
@@ -38,7 +39,16 @@ class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
             // Simulate baud connection
             val byteRate = baud / 10 // 1 start, 8 bits, 1 stop
             val nanosPerByte = 1000000000 / byteRate
-            Thread.sleep(0, nanosPerByte)
+            if (rxAvailable == 2 || (rxOffset + rxAvailable) >= rxData.length) {
+                Thread.sleep(1)
+            } else {
+                var nanoEnd = System.nanoTime()
+                // Spin wait if we have data left, sleep is too inaccurate for simulating
+                // bau
+                while (nanoEnd - nanoStart < nanosPerByte) {
+                    nanoEnd = System.nanoTime()
+                }
+            }
         }
     })
 

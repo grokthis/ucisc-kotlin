@@ -2,9 +2,9 @@ package com.grokthis.ucisc.vm
 
 import java.lang.IllegalStateException
 
-class Instruction(instruction: Int, private val processor: Processor) {
-    private val word = instruction.and(0xFFFF0000.toInt()).shr(16).and(0xFFFF)
-    val source = word.and(0xF000).shr(12)
+class Instruction(msWord: Int, lsWord: Int, private val processor: Processor) {
+    private val word = msWord.and(0xFFFF)
+    val source = word.shr(12)
     val destination = word.and(0x0F00).shr(8)
     val increment = word.and(0x0080).shr(7)
     val effect = word.and(0x0070).shr(4)
@@ -14,15 +14,15 @@ class Instruction(instruction: Int, private val processor: Processor) {
 
     init {
         if (isDestinationMem()) {
-        val sign = if (!isSourceMem() && instruction.and(0x0800) > 0) {
-                0xF000 // Sign extend negative value
-            } else {
+        val sign = if (lsWord.and(0x0800) == 0 || isSourceMem()) {
                 0x0000
+            } else {
+                0xF000 // Sign extend negative value
             }
-            immediate = instruction.and(0x0FFF).or(sign)
-            offset = instruction.and(0xF000).shr(12)
+            immediate = lsWord.and(0x0FFF).or(sign)
+            offset = lsWord.and(0xF000).shr(12)
         } else {
-            immediate = instruction.and(0xFFFF)
+            immediate = lsWord.and(0xFFFF)
             offset = 0
         }
     }
@@ -52,13 +52,12 @@ class Instruction(instruction: Int, private val processor: Processor) {
     fun shouldStore(): Boolean {
         val flags = processor.flags
         val zero = flags.and(0x0001) != 0
-        val negative = flags.and(0x0002) != 0
 
         return when (effect) {
-            0 -> zero
-            1 -> !zero 2 -> negative
-            3 -> false
             4 -> true
+            3 -> false
+            0 -> zero
+            1 -> !zero 2 -> flags.and(0x0002) != 0
             5 -> flags.and(0x0008) != 0
             6 -> flags.and(0x0010) != 0
             7 -> flags.and(0x0020) != 0
@@ -254,6 +253,80 @@ class Instruction(instruction: Int, private val processor: Processor) {
     }
 
     override fun toString(): String {
-        return "$aluCode.op $source.arg $immediate.imm $destination.arg $offset.imm $increment.inc $effect.eff"
+        val op = when (aluCode) {
+            0 -> "copy"
+            1 -> "and "
+            2 -> " or "
+            3 -> "xor "
+            4 -> "inv "
+            5 -> "shl "
+            6 -> "shr "
+            7 -> "swap"
+            8 -> "msb "
+            9 -> "lsb "
+            10 -> "add "
+            11 -> "sub "
+            12 -> "mult"
+            13 -> "div "
+            14 -> "rflw"
+            15 -> "wflw"
+            else -> "????"
+        }
+        val src = when (source) {
+            0 -> "pc  "
+            1 -> "stk "
+            2 -> "r2  "
+            3 -> "r3  "
+            4 -> "val "
+            5 -> "&stk"
+            6 -> "&r2 "
+            7 -> "&r3 "
+            8 -> "flag"
+            9 -> "b1  "
+            10 -> "b2  "
+            11 -> "b3  "
+            12 -> "int "
+            13 -> "&b1 "
+            14 -> "&b2 "
+            15 -> "&b3 "
+            else -> "????"
+        }
+        val dst = when (destination) {
+            0 -> "pc  "
+            1 -> "stk "
+            2 -> "r2  "
+            3 -> "r3  "
+            4 -> "val "
+            5 -> "&stk"
+            6 -> "&r2 "
+            7 -> "&r3 "
+            8 -> "flag"
+            9 -> "b1  "
+            10 -> "b2  "
+            11 -> "b3  "
+            12 -> "int "
+            13 -> "&b1 "
+            14 -> "&b2 "
+            15 -> "&b3 "
+            else -> "????"
+        }
+        val inc = when {
+            !isDestinationMem() && !isSourceMem() -> "-   "
+            increment == 1 && !isDestinationMem() -> "pop "
+            increment == 1 -> "push"
+            else -> "none"
+        }
+        val eff = when (effect) {
+            0 -> "zero? "
+            1 -> "!zero?"
+            2 -> "neg?  "
+            3 -> "flags "
+            4 -> "store "
+            5 -> "oflow?"
+            6 -> "error?"
+            7 -> "int?  "
+            else -> "????  "
+        }
+        return "$op $src $immediate     $dst $offset    $inc $eff"
     }
 }

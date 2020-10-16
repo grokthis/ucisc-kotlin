@@ -1,5 +1,6 @@
 package com.grokthis.ucisc.vm
 
+import kotlin.system.exitProcess
 import kotlin.system.measureTimeMillis
 
 class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, addressWidth) {
@@ -11,7 +12,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
     var next: Int = 2
     var overflow: Int = 0
     private val registers = Array(8) { 0 }
-    var debug = true
+    var debug = false
 
     fun setRegister(number: Int, value: Int) {
         when (number) {
@@ -40,19 +41,23 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
         var instructionCount = 0
         var exitCode = 0 // continue
         val time = measureTimeMillis {
-            while (exitCode == 0 && instructionCount < 100000000) {
+            while (exitCode == 0) {
                 val msWord = readMem(id, pc)
                 val lsWord = readMem(id, pc + 1)
 
-                val instruction = Instruction(msWord.shl(16).or(lsWord), this)
-                if (debug) printInstruction(instruction)
-                exitCode = instruction.execute()
-                if (exitCode != 0 && debug) {
-                    exitCode = 0
-                    pc += 2
-                    next = pc + 2
-                }
                 instructionCount += 1
+                val instruction = Instruction(msWord, lsWord, this)
+                if (debug) printInstruction(instruction, debug)
+                exitCode = instruction.execute()
+                if (exitCode != 0) {
+                    print("HALT!")
+                    doCommandPrompt(instruction)
+                    if (debug) {
+                        exitCode = 0
+                        pc += 2
+                        next = pc + 2
+                    }
+                }
             }
         }
         val returnVal = readMem(id, registers[1])
@@ -60,8 +65,32 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
         return returnVal
     }
 
-    private fun stackString(): String {
-        var address = registers[1].and(0xFFFF)
+    private fun doCommandPrompt(instruction: Instruction) {
+        var done = false
+        while (!done) {
+            print(" > ")
+            val input = readLine()
+            when (input) {
+                "c", "continue" -> {
+                    debug = false
+                    done = true
+                }
+                "", "n", "next" -> {
+                    debug = true
+                    done = true
+                }
+                "p", "print" -> {
+                    printInstruction(instruction, false)
+                }
+                "e", "exit" -> {
+                    exitProcess(0)
+                }
+            }
+        }
+    }
+
+    private fun stackString(reg: Int): String {
+        var address = registers[reg].and(0xFFFF)
         val endAddress = if (address > 0) (address + 10) else address
         var result = String.format("%04X:", address)
         while (address > 0 && address < endAddress && address <= 0xFFFF) {
@@ -71,7 +100,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
         return result
     }
 
-    private fun printInstruction(instruction: Instruction) {
+    private fun printInstruction(instruction: Instruction, prompt: Boolean) {
         val srcVal = instruction.sourceValue(true)
         val op = when (instruction.aluCode) {
             0 -> "copy"
@@ -96,8 +125,14 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
         val store = instruction.shouldStore()
         val result = if (store) instruction.computeResult(true) else dstVal
 
-        println(String.format("Stack: %s", stackString()))
+        println("=======================================================")
+        println(String.format("r3#%s", stackString(3)))
+        println(String.format("r2#%s", stackString(2)))
+        println(String.format("Stack#%s", stackString(1)))
         println(String.format("%04X: %s - %05d %s %05d = %05d", pc, instruction.toString(), srcVal, op, dstVal, result))
+        if (prompt) {
+            doCommandPrompt(instruction)
+        }
     }
 
     override fun getControl(sourceDevice: Int, address: Int, debug: Boolean): Int {
