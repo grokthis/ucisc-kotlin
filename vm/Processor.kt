@@ -13,6 +13,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
     var overflow: Int = 0
     private val registers = Array(8) { 0 }
     var debug = false
+    var haltAsDebug = true
 
     fun setRegister(number: Int, value: Int) {
         when (number) {
@@ -49,7 +50,7 @@ class Processor(id: Int, addressWidth: Int) : Device(id, DeviceType.PROCESSOR, a
                 val instruction = Instruction(msWord, lsWord, this)
                 if (debug) printInstruction(instruction, debug)
                 exitCode = instruction.execute()
-                if (exitCode != 0) {
+                if (haltAsDebug && exitCode != 0) {
                     print("HALT!")
                     doCommandPrompt(instruction)
                     if (debug) {

@@ -14,7 +14,7 @@ TEST    42    1
 TEST    56    0
 TEST    70    2
 TEST    84    1
-# flagsOnly
+# flags
 TEST    98    2
 TEST    112   0
 # overflow
@@ -26,234 +26,135 @@ TEST    168   1
 
 # Test a simple zero? conditional
 #  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    0          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc zero?
-   0    0    4          0    -          0    0
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
+    copy val 0 &stack
+    copy val 0 stack 0 push
+    or stack 0 stack 0
+    copy pc 4 pc zero?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
 # Expect 1
 
 # Test a simple zero? conditional
 #  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    2          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc zero?
-   0    0    4          0    -          0    0
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
+    copy val 0 &stack
+    copy val 2 stack 0 push
+    or stack 0 stack 0
+    copy pc 4 pc zero?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
 # Expect 1
 
-# Test a simple notZero? conditional
+# Test a simple !zero? conditional
 #  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    0          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc notZero?
-   0    0    4          0    -          0    1
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
-# Expect 1
+    copy val 0 &stack
+    copy val 0 stack 0 push
+    or stack 0 stack 0
+    copy pc 4 pc !zero?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
+# Expect 0
 
-# Test a simple notZero? conditional
+# Test a simple !zero? conditional
 #  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    2          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc notZero?
-   0    0    4          0    -          0    1
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
+    copy val 0 &stack
+    copy val 2 stack 0 push
+    or stack 0 stack 0
+    copy pc 4 pc !zero?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
 # Expect 1
 
 # Test a simple negative? conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 0.imm stack
-   0    4    0          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc negative?
-   0    0    4          0    -          0    2
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
+    copy val 0 &stack
+    copy val 0 stack 0 push
+    or stack 0 stack 0
+    copy pc 4 pc negative?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
+# Expect 0
+
+# Test a simple negative? conditional
+    copy val 0 &stack
+    copy val 2 stack 0 push
+    or stack 0 stack 0
+    copy pc 4 pc negative?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
+# Expect 2
+
+# Test a simple negative? conditional
+    copy val 0 &stack
+    copy val -1 stack 0 push
+    or stack 0 stack 0
+    copy pc 4 pc negative?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
 # Expect 1
 
-# Test a simple notZero? conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    2          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc notZero?
-   0    0    4          0    -          0    2
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
-# Expect 1
+# Test a simple flags conditional
+    copy val 0 &stack
+    copy val 2 stack push
+    or stack 0 stack 0
+    copy pc 4 pc flags
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
+# Expect 2
 
-# Test a simple notZero? conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    -1         1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc notZero?
-   0    0    4          0    -          0    2
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
-# Expect 1
-
-# Test a simple flagsOnly conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    2          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc notZero?
-   0    0    4          0    -          0    3
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
-# Expect 1
-
-# Test a simple notZero? conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    0          1    0          1    4
-#  or stack stack
-   2    1    0          1    0          0    4
-#  copy pc 4 pc notZero?
-   0    0    4          0    -          0    3
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
-# Expect 1
+# Test a simple flags conditional
+    copy val imm &stack
+    copy val 0 stack push
+    or stack 0 stack 0
+    copy pc 4 pc flags
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
+# Expect 0
 
 # Test a simple overflow? conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    1024       1    0          1    4
-#  or stack stack
-   12   4    0          1    0          0    4
-#  copy pc 4 pc overflow?
-   0    0    4          0    -          0    5
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
-# Expect 1
+    copy val 0 &stack
+    copy val 1024 stack push
+    mult val 0 stack 0
+    copy pc 4 pc oflow?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
+# Expect 0
 
 # Test a simple overflow? conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    1024       1    0          1    4
-#  or stack stack
-   12   4    1024       1    0          0    4
-#  copy pc 4 pc overflow?
-   0    0    4          0    -          0    5
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
+    copy val 0 &stack
+    copy val 1024 stack 0 push
+    mult val 1024 stack 0
+    copy pc 4 pc oflow?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
 # Expect 1
 
 # Test a simple error? conditional
-#  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    2          1    0          1    4
-#  or stack stack
-   13   4    1          1    0          0    4
-#  copy pc 4 pc error?
-   0    0    4          0    -          0    6
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
-# Expect 1
+    copy val 0 &stack
+    copy val 2 stack 0 push
+    div val 1 stack 0
+    copy pc 4 pc error?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
+# Expect 2
 
 # Test a simple error? conditional
 #  op   src  imm        dst  off        inc  eff
-#  copy val 0.imm &stack
-   0    4    0          5    -          0    4
-#  copy val 2.imm stack
-   0    4    2          1    0          1    4
-#  or stack stack
-   13   4    0          1    0          0    4
-#  copy pc 4 pc error?
-   0    0    4          0    -          0    6
-#  halt
-   0    0    0          0    -          0    4
-#  copy val 1 stack
-   0    4    1          1    0          0    4
-#  halt
-   0    0    0          0    -          0    4
+    copy val 0 &stack
+    copy val 2 stack 0 push
+    div val 0 stack 0
+    copy pc 4 pc error?
+    copy pc 0 pc
+    copy val 1 stack 0
+    copy pc 0 pc
 # Expect 1

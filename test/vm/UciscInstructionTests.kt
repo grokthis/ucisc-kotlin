@@ -1,6 +1,6 @@
 package com.grokthis.ucisc.vm
 
-import com.grokthis.ucisc.compile.MicroAssembler
+import com.grokthis.ucisc.compile.Assembler
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.DynamicTest.dynamicTest
 import org.junit.jupiter.api.TestFactory
@@ -19,7 +19,7 @@ class UciscInstructionTests {
                 val reader = it.bufferedReader()
                 val code = reader.readText()
                 reader.close()
-                val compiled = MicroAssembler().compile(code)
+                val compiled = Assembler().compile(code)
                 compiled.tests.entries.forEach {
                     val startOffset = it.key
                     val expected = it.value
@@ -42,6 +42,7 @@ class UciscInstructionTests {
         processor.connected[16] = writer
         //processor.connected[17] = reader
         processor.load(instructions)
+        processor.haltAsDebug = false
         return processor
     }
 }

@@ -1,0 +1,4 @@
+# Compile halt test
+TEST   0   64
+
+copy pc 0 pc # Halt instruction

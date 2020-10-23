@@ -1,6 +1,6 @@
 package com.grokthis.ucisc.vm
 
-import com.grokthis.ucisc.compile.MicroAssembler
+import com.grokthis.ucisc.compile.Assembler
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -16,7 +16,7 @@ fun main(args: Array<String>) {
     val serial = SerialConnection(100)
     val processor = Processor(1, 16)
     processor.connected[2] = serial
-    val compiled = MicroAssembler().compile(code)
+    val compiled = Assembler().compile(code)
     processor.load(compiled.instructions)
     serial.rxData = readFile("ucisc/compile.uc")
     processor.run()
