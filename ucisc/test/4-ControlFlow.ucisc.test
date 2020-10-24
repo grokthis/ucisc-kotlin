@@ -1,0 +1,113 @@
+
+TEST testLoop 0
+TEST testBreak 100
+TEST testDoubleLoop 0
+TEST testDoubleBreak 100
+TEST testFunctionCall 10
+TEST testFunctionCallWithArgs 10
+TEST testStackArgs 1024
+
+
+# Test the loop jump condition
+testLoop:
+copy val 0 &stack
+copy val 100 stack 0 push
+{
+    sub val 1 stack 0
+    copy pc loop pc !zero?
+}
+copy pc 0 pc
+
+# Test the break jump condition
+testBreak:
+copy val 0 &stack
+copy val 0 stack 0 push
+{
+    or val 0 stack 0 flags
+    copy pc break pc zero?
+    copy pc 0 pc # halt before setting 100 on stack
+}
+copy val 100 stack 0 # Success!
+copy pc 0 pc
+
+testDoubleLoop:
+# Test the layered loop jump condition
+copy val 0 &stack
+copy val 100 stack 0 push
+{
+    sub val 1 stack 0
+    {
+        # This will be a halt if it loops to itself
+        copy pc loop.2 pc !zero?
+        copy pc 0 pc
+    }
+}
+copy pc 0 pc
+
+# Test the double break jump condition
+testDoubleBreak:
+copy val 0 &stack
+copy val 0 stack 0 push
+{
+    or val 0 stack 0 flags
+    {
+        copy pc break.2 pc zero?
+        copy pc 0 pc # halt before setting 100 on stack
+    }
+    copy pc 0 pc
+}
+copy val 100 stack 0 # Success!
+copy pc 0 pc
+
+testFunctionCall:
+{
+    copy val 10 stack 0 push
+    copy val 1024 stack 0 push
+
+    popOffStack()
+    copy pc 0 pc
+
+    popOffStack: {
+        copy stack 0 &r2 pop
+        copy &stack 1 &stack   # Pop 1024 off stack
+        copy &r2 0 pc
+    }
+}
+copy val -1 stack 0 push # Should not get here
+copy pc 0 pc
+# Expect 10
+
+copy pc 0 pc
+testFunctionCallWithArgs:
+{
+    copy val 10  stack 0 push
+    copy val 1024 stack 0 push
+
+    pop2OffStack(val 10, stack 0)
+    copy pc 0 pc
+
+    pop2OffStack: {
+        copy &stack 2 &stack   # Just pop the args, don't need to actually use it
+        copy stack 0 &r2 pop   # pop return address into &r2
+        copy &stack 1 &stack   # Pop 1024 off stack
+        copy &r2 0 pc          # Jump return
+    }
+}
+copy val -1 stack 0 push # Should not get here
+copy pc 0 pc
+# Expect 10
+
+testStackArgs:
+{
+    copy val 10  stack 0 push
+    copy val 1024 stack 0 push
+
+    checkStack(val 10, stack 0) # Stack zero should be stack 2 after expansion
+    copy pc 0 pc
+
+    checkStack: {
+        # Top of stack should be 1024 from stack 2
+        copy pc 0 pc
+    }
+}
+# Expect 1024

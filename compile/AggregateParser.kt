@@ -9,6 +9,7 @@ class AggregateParser(val children: List<Parser>): Parser() {
                 DataParser(),
                 LabelParser(),
                 BlockParser(),
+                FunctionParser(),
                 InstructionParser()
             )
             return AggregateParser(parsers)

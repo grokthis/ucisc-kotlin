@@ -13,7 +13,7 @@ class UciscInstructionTests {
     fun instructionTests(): Collection<DynamicTest> {
         val tests = mutableListOf<DynamicTest>()
         File("ucisc/test").walk().forEach {
-            if (it.name.endsWith("uc.test")) {
+            if (it.name.endsWith("ucisc.test")) {
                 val testName = it.name
                 // Micro assembly code
                 val reader = it.bufferedReader()

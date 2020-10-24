@@ -50,18 +50,56 @@ class Assembler {
             }
         }.filterNotNull()
 
+        var loopAddresses = mutableListOf<Int>()
+        var breakInstructions = mutableListOf<MutableList<Instruction>>()
         var address = 0
         var labelAddresses = mutableMapOf<String, Int>()
         // Set the address for each instruction
         parsed.forEach { parsedLine ->
             parsedLine.labels.forEach { label ->
-                labelAddresses[label] = address
+                if (label == "loop") {
+                    loopAddresses.add(address)
+                } else if (label == "break") {
+                    if (breakInstructions.size > 0) {
+                        breakInstructions[0].forEach { instruction ->
+                            instruction.setImmediate(address - instruction.address)
+                        }
+                        breakInstructions.removeAt(0)
+                    }
+                } else {
+                    labelAddresses[label] = address
+                }
             }
             labelAddresses.putAll(parsedLine.defs)
 
             parsedLine.instructions.forEach { instruction ->
                 instruction.address = address
                 address += 2
+
+                if (instruction.immediateLabel.startsWith("loop")) {
+                    val count = instruction.immediateLabel.split(".").last().toIntOrNull()
+                    if (count == null) {
+                        instruction.setImmediate(loopAddresses.last() - instruction.address)
+                    } else {
+                        instruction.setImmediate(loopAddresses[loopAddresses.size - count] - instruction.address)
+                    }
+                }
+
+                if (instruction.immediateLabel.startsWith("break")) {
+                    val count = instruction.immediateLabel.split(".").last().toIntOrNull()
+                    if (count == null) {
+                        if (breakInstructions.size == 0) {
+                            breakInstructions.add(mutableListOf(instruction))
+                        } else {
+                            breakInstructions[0].add(instruction)
+                        }
+                    } else {
+                        while (breakInstructions.size < count) {
+                            breakInstructions.add(mutableListOf())
+                        }
+                        breakInstructions[count - 1].add(instruction)
+                    }
+                }
             }
             address += parsedLine.data.size
         }
@@ -71,7 +109,7 @@ class Assembler {
             parsedLine.instructions.forEach { instruction ->
                 val labelAddress = labelAddresses[instruction.immediateLabel]
                 if (labelAddress != null) {
-                    instruction.setIncrement(labelAddress - instruction.address)
+                    instruction.setImmediate(labelAddress - instruction.address)
                 }
             }
         }

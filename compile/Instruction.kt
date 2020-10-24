@@ -12,6 +12,16 @@ class Instruction {
         return listOf(msw, lsw)
     }
 
+    fun setInstruction(op: String, src: String, imm: String, dest: String, offset: String, inc: String, eff: String) {
+        setOpCode(op)
+        setSource(src)
+        setImmediate(imm)
+        setDestination(dest)
+        setOffset(offset)
+        setIncrement(inc)
+        setEffect(eff)
+    }
+
     fun hasOffset(): Boolean {
         val dest = msw.and(0x0F00).shr(8)
         return dest in 1..3 || dest in 9..11
@@ -196,10 +206,12 @@ class Instruction {
     }
 
     fun setIncrement(inc: String) {
-        when (inc) {
-            "push", "pop", "1" -> setIncrement(1)
-            "none", "0", "-" -> setIncrement(0)
-            else -> parseError = true
+        if (hasIncrement()) {
+            when (inc) {
+                "push", "pop", "1" -> setIncrement(1)
+                "none", "0", "-" -> setIncrement(0)
+                else -> parseError = true
+            }
         }
     }
 }
