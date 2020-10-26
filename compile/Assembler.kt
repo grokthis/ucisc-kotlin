@@ -54,6 +54,7 @@ class Assembler {
         var breakInstructions = mutableListOf<MutableList<Instruction>>()
         var address = 0
         var labelAddresses = mutableMapOf<String, Int>()
+        val defs = mutableMapOf<String, Int>()
         // Set the address for each instruction
         parsed.forEach { parsedLine ->
             parsedLine.labels.forEach { label ->
@@ -70,7 +71,7 @@ class Assembler {
                     labelAddresses[label] = address
                 }
             }
-            labelAddresses.putAll(parsedLine.defs)
+            defs.putAll(parsedLine.defs)
 
             parsedLine.instructions.forEach { instruction ->
                 instruction.address = address
@@ -108,7 +109,10 @@ class Assembler {
         parsed.forEach { parsedLine ->
             parsedLine.instructions.forEach { instruction ->
                 val labelAddress = labelAddresses[instruction.immediateLabel]
-                if (labelAddress != null) {
+                val defValue = defs[instruction.immediateLabel]
+                if (defValue != null) {
+                    instruction.setImmediate(defValue)
+                } else if (labelAddress != null) {
                     instruction.setImmediate(labelAddress - instruction.address)
                 }
             }

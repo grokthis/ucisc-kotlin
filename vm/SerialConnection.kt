@@ -2,11 +2,12 @@ package com.grokthis.ucisc.vm
 
 class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
     private var rxOffset = 0
-    var rxData = ""
+    var rxData: List<Byte> = listOf()
         set(value) {
             synchronized(this) {
-                field = field.substring(rxOffset)
-                field += value
+                val mutableList = field.subList(rxOffset, field.size).toMutableList()
+                mutableList.addAll(value)
+                field = mutableList
                 rxOffset = 0
             }
         }
@@ -29,7 +30,7 @@ class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
         while (enabled) {
             val nanoStart = System.nanoTime()
             synchronized(this) {
-                if (rxAvailable < 2 && (rxOffset + rxAvailable) < rxData.length) {
+                if (rxAvailable < 2 && (rxOffset + rxAvailable) < rxData.size) {
                     rxAvailable += 1
                 }
                 if (txAvailable < 2) {
@@ -39,7 +40,7 @@ class SerialConnection(id: Int): Device(id, DeviceType.SERIAL, 0) {
             // Simulate baud connection
             val byteRate = baud / 10 // 1 start, 8 bits, 1 stop
             val nanosPerByte = 1000000000 / byteRate
-            if (rxAvailable == 2 || (rxOffset + rxAvailable) >= rxData.length) {
+            if (rxAvailable == 2 || (rxOffset + rxAvailable) >= rxData.size) {
                 Thread.sleep(1)
             } else {
                 var nanoEnd = System.nanoTime()

@@ -7,5 +7,6 @@ enum class DeviceType(val code: Int) {
   BLOCK_IO(3),
   SERIAL(4),
   HID(5),
-  TERMINAL(6)
+  TERMINAL(6),
+  PINIO(7)
 }

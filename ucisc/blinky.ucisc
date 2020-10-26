@@ -1,0 +1,59 @@
+# Blink and LED with ONLY copy and add commands. The goal is to write the
+# smallest code surface area that can load into the uCISC processor so that
+# I have the best chance of being able to get it working properly. Add is
+# needed to set the flags on an ALU op.
+
+# Define a bunch of useful values
+# Stack end address
+def stackEnd as 4096
+
+# LED IO device type
+def ledDevice as 7
+def negLedDevice as -7
+# Control block size
+def ctrlBlockSize as 16
+def ctrlMemEnd as -4096
+
+# Device control block offsets
+def devId as 0
+def devType as 1
+
+
+# Initialize the stack to start at 4k
+#  op   src  imm        dst
+   copy val  stackEnd   &stack # Init stack
+
+# Loop through all devices and find the first serial device
+    copy val  32                   &rb1 # Start at device 2 (* 16 bytes per control block)
+
+    # Loop through devices and find a serial device
+    {
+        copy rb1  devType         &r2
+        add  val  negLedDevice    &r2  flags
+        copy pc   break           pc   zero?
+
+        copy &rb1 ctrlBlockSize   &rb1
+        add  val  ctrlMemEnd      &rb1 flags  # Check for end of control mem space
+        copy pc   loop            pc   !zero?
+        copy pc   0               pc          # Error, no serial device found, halt
+    }
+
+    copy val 1    rb1 2
+
+    copy val 0    &r2
+    copy val 0    &r3
+
+    {
+        {
+            add val 1 &r2
+            copy pc loop pc !zero?
+        }
+
+        add val 1 &r3
+        add val -128 &r3 flags
+        copy pc loop pc !zero?
+
+        copy val 0 &r3
+        add  val 1 rb1 6
+        copy pc loop pc
+    }

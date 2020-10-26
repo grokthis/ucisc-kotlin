@@ -24,6 +24,7 @@ open class Device(
     private var bankIndex: Int = 0
 ) {
     private val dataMask: Int = 0xFFFF
+    private val listeners: MutableList<DeviceListener> = mutableListOf()
 
     // Block address currently selected for init device access
     var mappedBlock: Int = 0
@@ -144,11 +145,26 @@ open class Device(
     protected open fun setControl(sourceDevice: Int, address: Int, value: Int) {
         if ((address == 2 && initDevice == 0) || isControllingDevice(sourceDevice)) {
             when (address) {
-                1 -> bankIndex = value.and(0xFF00).shr(8)
-                2 -> initDevice = value.and(0xFFFF)
-                3 -> mappedBlock = value.and(0xFFFF)
-                4 -> deviceStatus = value.and(0xFF)
-                5 -> interruptHandler = value.and(0xFFFF)
+                1 -> {
+                    bankIndex = value.and(0xFF00).shr(8)
+                    notifyListeners()
+                }
+                2 -> {
+                    initDevice = value.and(0xFFFF)
+                    notifyListeners()
+                }
+                3 -> {
+                    mappedBlock = value.and(0xFFFF)
+                    notifyListeners()
+                }
+                4 -> {
+                    deviceStatus = value.and(0xFF)
+                    notifyListeners()
+                }
+                5 -> {
+                    interruptHandler = value.and(0xFFFF)
+                    notifyListeners()
+                }
             }
         } else if (isHalted() && initDevice == 0 && address == 2) {
             initDevice = value.and(0xFFFF)
@@ -169,5 +185,17 @@ open class Device(
         } else {
             0
         }
+    }
+
+    fun addListener(deviceListener: DeviceListener) {
+        listeners.add(deviceListener)
+    }
+
+    fun removeListener(deviceListener: DeviceListener) {
+        listeners.remove(deviceListener)
+    }
+
+    protected fun notifyListeners() {
+        listeners.forEach { it.deviceChanged(this) }
     }
 }
