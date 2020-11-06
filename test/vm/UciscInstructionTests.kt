@@ -12,7 +12,7 @@ class UciscInstructionTests {
     @TestFactory
     fun instructionTests(): Collection<DynamicTest> {
         val tests = mutableListOf<DynamicTest>()
-        File("ucisc/test").walk().forEach {
+        File("src/ucisc/test").walk().forEach {
             if (it.name.endsWith("ucisc.test")) {
                 val testName = it.name
                 // Micro assembly code
