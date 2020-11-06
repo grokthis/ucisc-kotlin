@@ -1,8 +1,5 @@
 package com.grokthis.ucisc.compile
 
-import java.lang.IllegalArgumentException
-import java.lang.NumberFormatException
-
 /**
  * Parse the most basic level of uCISC assembly language. Higher level elements
  * will translate, perhaps through multiple levels into an assembly file. The

@@ -1,7 +1,5 @@
 package com.grokthis.ucisc.compile
 
-import java.nio.charset.Charset
-
 class DataParser: Parser() {
     override fun parse(line: String, rootParser: Parser?): ParsedLine? {
         if (!line.startsWith("%")) {

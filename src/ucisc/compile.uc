@@ -11,61 +11,11 @@
 # 4. Any comment or blank line will be ignored
 # 5. Microcode will attempt to be compiled. Hex string will be streamed back to Tx.
 
-################
-# Syntax Setup #
-################
-def push as 1
-def pop as 1
-def none as 0
+# Define a bunch of useful values
+# Stack end address
+def stackEnd as 4096
 
-def pc as 0
-def stk as 1
-def r1 as 1
-def r2 as 2
-def r3 as 3
-def val as 4
-def bnk as 4
-def &stk as 5
-def &r1 as 5
-def &r2 as 6
-def &r3 as 7
-def flags as 8
-def b1 as 9
-def b2 as 10
-def b3 as 11
-def int as 12
-def &b1 as 13
-def &b2 as 14
-def &b3 as 15
-
-# Conditionals
-def zero? as 0
-def !zero? as 1
-def neg? as 2
-def flags as 3
-def store as 4
-def oflow? as 5
-def error? as 6
-def int? as 7
-
-# Compute Ops
-def copy as 0
-def and as 1
-def or as 2
-def xor as 3
-def inv as 4
-def shl as 5
-def shr as 6
-def swap as 7
-def msb as 8
-def lsb as 9
-def add as 10
-def sub as 11
-def mult as 12
-def div as 13
-def oflw as 14
-def wflw as 15
-
+# Device control block offsets
 def devId as 0
 def devType as 1
 def initDev as 2
@@ -76,40 +26,37 @@ def RxSize as 9
 def RxAvail as 9
 def RxRead as 10
 
-def cEOT as 3
-def cNewline as 10
-def cSpace as 32
-def cHash as 35
-def cZero as 48
-def cNine as 57
-def cTokenStrt as 33
-def cTokenEnd as 127
+def ctrlMemEnd as 4096
+def devTypeSerial as 4
+def ctrlBlockSize as 16
 
 ######################
 # Init Serial Device #
 ######################
 
 # Initialize the stack to start at 4k
-#  op   src  imm        dst  off        inc  eff
-   copy val  4096       &stk 0          -    store  # Init stack to 4k
+#  op   src  imm        dst
+   copy val  stackEnd   &stk # Init stack
 
-# A: 2
 # Loop through all devices and find the first serial device
-#  op   src  imm        dst  off        inc  eff
-   copy val  2          &b1  -          -    store
-   mult val  16         &b1  -          -    store  # Multiply device by 16 to get control space
-:loopCtrl
-   lsb  b1   devType    &r2  -          -    store  # Copy deviceType LSB to r2
-   sub  val  4          &r2  -          -    flags  # subtract 4 from r2 (serial device id)
-   copy pc   initSerial pc   -          -    zero?  # break if 0
-   add  val  16         &b1  -          -    store  # Add 16 to control bank pointer
-   sub  val  4096       &b1  -          -    flags  # subtract 0x1000, end of control space
-   copy pc   loopCtrl   pc   -          -    !zero? # loop if not zero
-   copy pc   0          pc   -          -    store  # Error, no serial device, halt
-:initSerial
-   copy val  0          &b2   -         -    store  # Load self control into &b2
-   copy b2   devId      b1   initDev    none store  # Copy our id into initDevice on serial device
-   copy &b1  0          stk  0          push store  # Push device control to stack
+    copy val  2                   &rb1 # Start at device 2
+    mult val  ctrlBlockSize       &rb1 # Multiply to get control space
+
+    # Loop through devices and find a serial device
+    {
+        lsb  b1   devType         &r2
+        sub  val  devTypeSerial   &r2  flags
+        copy pc   break           pc   zero?
+
+        add  val  ctrlBlockSize   &rb1
+        sub  val  ctrlMemEnd      &rb1 flags  # Check for end of control mem space
+        copy pc   loop            pc   !zero?
+        copy pc   0               pc          # Error, no serial device found, halt
+    }
+
+   copy val  0      &b2            # Load self control into &b2
+   copy b2   devId  b1 ctrlInitDev # Copy our id into initDevice on serial device
+   copy &b1  0      stack  0  push # Push device control to stack
 
 #############
 # Main Code #
