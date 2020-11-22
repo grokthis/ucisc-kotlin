@@ -119,6 +119,10 @@ class Instruction {
 
     fun setDestination(destination: Int) {
         msw = msw.and(0xF0FF).or(destination.and(0xF).shl(8))
+        if (listOf(1, 2, 3, 9, 10, 11).contains(destination)) {
+            // Erase offset
+            lsw = lsw.and(0x0FFF)
+        }
     }
 
     fun getDestination(): Int {

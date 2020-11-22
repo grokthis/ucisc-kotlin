@@ -1,37 +1,31 @@
 package com.grokthis.ucisc.compile
 
 class DataParser: Parser() {
+    val strMatch = Regex("\"(?<str>.*)")
+
     override fun parse(line: String, rootParser: Parser?): ParsedLine? {
-        if (!line.startsWith("%")) {
+        if (!line.startsWith("%") && !line.startsWith("\"")) {
             return null
         }
-        val data = line.substring(1).split(Regex("\\s")).filter { it.isNotBlank() }
-        val result = mutableListOf<Int>()
-
-        val words = data.flatMap { element ->
-            val strMatch = Regex("\"(?<str>([^\"]*|\\\\\")*)\"").matchEntire(element)
-            if (strMatch != null) {
-                val string = strMatch.groups["str"].toString()
-                    .replace("\\\"", "\"")
-                    .replace("\\\n", "\n")
-                val bytes = string.toByteArray(Charsets.UTF_16BE)
-                val result = mutableListOf<Int>()
-                for (i in 0 .. bytes.size / 2) {
-                    val word = bytes[i].toInt().and(0xF).shl(8).or(bytes[i + 1].toInt().and(0xF))
-                    result.add(word)
+        val words = mutableListOf<Int>()
+        if (line.startsWith("\"")) {
+            val strLiteral = line.substring(1)
+            val bytes = strLiteral.toByteArray(Charsets.UTF_8)
+            bytes.forEach { byte ->
+                val word = byte.toInt()
+                words.add(word)
+            }
+            words.add(0, words.size)
+        } else {
+            val hexLine = line.replace(" ", "")
+            for (i in 0 .. hexLine.length / 4) {
+                val hexValue = hexLine.substring(i * 4, minOf(i * 4 + 4, hexLine.length))
+                val word = hexValue.toIntOrNull(16)
+                if (word == null) {
+                    println("Unable to parse data as hex fully: $hexValue")
+                } else {
+                    words.add(word)
                 }
-                result
-            } else {
-                val result = mutableListOf<Int>()
-                for (i in 0 .. element.length / 4) {
-                    val word = element.substring(i, i + 4).toIntOrNull(16)
-                    if (word == null) {
-                        println("Unable to parse data as hex fully: $element")
-                    } else {
-                        result.add(word)
-                    }
-                }
-                result
             }
         }
         val parsed = ParsedLine()

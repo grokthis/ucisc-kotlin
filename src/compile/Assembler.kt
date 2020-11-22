@@ -116,9 +116,11 @@ class Assembler {
         }
 
 
-        val instructions = parsed
-            .flatMap { parsedLine -> parsedLine.instructions }
-            .flatMap { instruction -> instruction.words() }
+        val words = mutableListOf<Int>()
+        parsed.forEach { parsedLine ->
+            words.addAll(parsedLine.instructions.flatMap { it.words() })
+            words.addAll(parsedLine.data)
+        }
 
         val tests = mutableMapOf<Int, Int>()
         parsed.forEach { parsedLine ->
@@ -130,7 +132,7 @@ class Assembler {
             }
         }
 
-        return CompiledCode(instructions, tests)
+        return CompiledCode(words, tests)
     }
 
     private fun toWords(int32: Int): List<Int> {
