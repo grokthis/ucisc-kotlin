@@ -22,11 +22,33 @@ fun main(args: Array<String>) {
     }.filterNotNull()
 
     val code = codeList.joinToString("\n", "", "")
-    val words = Assembler().compile(code).instructions
-    if (compile) {
-        dumpHex(words)
-    } else {
-        run(words);
+    var scope = Scope()
+    code.split("\n").forEachIndexed { lineIndex, line ->
+        try {
+            var cleanLine = line.replace(Regex("#.*"), "").trim()
+            if (cleanLine.isNotEmpty()) {
+                scope = scope.parseLine(cleanLine)
+            }
+        } catch (e: IllegalArgumentException) {
+            System.err.println("Error on line ${lineIndex + 1}: ${e.message}")
+            exitProcess(1)
+        }
+    }
+    if (scope.parent != null) {
+        System.err.println("Found unclosed block at the end of the file")
+    }
+    val labels = mutableMapOf<String, Int>()
+    try {
+        scope.resolveLabels(0, labels)
+        val words = scope.words(0, labels)
+        if (compile) {
+            dumpHex(words)
+        } else {
+            run(words);
+        }
+    } catch (e: IllegalArgumentException) {
+        System.err.println("Error: ${e.message}")
+        exitProcess(1)
     }
 }
 
