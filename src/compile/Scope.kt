@@ -150,10 +150,10 @@ class Scope(val parent: Scope? = null): Words() {
             "0" -> Effect.ZERO
             "!" -> Effect.NOTZERO
             "n" -> Effect.NEGATIVE
+            "p" -> Effect.POSITIVE
             "~" -> Effect.FLAGS
             "-" -> Effect.STORE
             "o" -> Effect.OVERFLOW
-            "e" -> Effect.ERROR
             "i" -> Effect.INTERRUPTED
             else -> {
                 throw IllegalArgumentException(

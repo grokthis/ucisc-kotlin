@@ -180,11 +180,11 @@ class Instruction {
             "zero?", "0.eff", "0" -> 0
             "!zero?", "1.eff", "1" -> 1
             "negative?", "2.eff", "2" -> 2
-            "flags", "3.eff", "3" -> 3
+            "positive?", "3.eff", "3" -> 3
             "store", "4.eff", "4" -> 4
             "oflow?", "5.eff", "5" -> 5
-            "error?", "6.eff", "6" -> 6
-            "int?", "7.eff", "7" -> 7
+            "int?", "6.eff", "6" -> 6
+            "flags", "7.eff", "7" -> 7
             else -> -1
         }
     }

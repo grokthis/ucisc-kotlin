@@ -4,9 +4,9 @@ enum class Effect(val value: Int) {
     ZERO(0),
     NOTZERO(1),
     NEGATIVE(2),
-    FLAGS(3),
+    POSITIVE(3),
     STORE(4),
     OVERFLOW(5),
-    ERROR(6),
-    INTERRUPTED(7)
+    INTERRUPTED(6),
+    FLAGS(7)
 }

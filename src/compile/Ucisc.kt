@@ -1,6 +1,6 @@
 package com.grokthis.ucisc.compile
 
-import com.grokthis.ucisc.vm.SerialBlinkyMachine
+import com.grokthis.ucisc.vm.ReferenceMachine
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -22,33 +22,12 @@ fun main(args: Array<String>) {
     }.filterNotNull()
 
     val code = codeList.joinToString("\n", "", "")
-    var scope = Scope()
-    code.split("\n").forEachIndexed { lineIndex, line ->
-        try {
-            var cleanLine = line.replace(Regex("#.*"), "").trim()
-            if (cleanLine.isNotEmpty()) {
-                scope = scope.parseLine(cleanLine)
-            }
-        } catch (e: IllegalArgumentException) {
-            System.err.println("Error on line ${lineIndex + 1}: ${e.message}")
-            exitProcess(1)
-        }
-    }
-    if (scope.parent != null) {
-        System.err.println("Found unclosed block at the end of the file")
-    }
-    val labels = mutableMapOf<String, Int>()
-    try {
-        scope.resolveLabels(0, labels)
-        val words = scope.words(0, labels)
-        if (compile) {
-            dumpHex(words)
-        } else {
-            run(words);
-        }
-    } catch (e: IllegalArgumentException) {
-        System.err.println("Error: ${e.message}")
-        exitProcess(1)
+    val words =
+        Compiler.compile(code)
+    if (compile) {
+        dumpHex(words)
+    } else {
+        run(words);
     }
 }
 
@@ -72,6 +51,6 @@ fun dumpHex(words: List<Int>) {
 }
 
 fun run(words: List<Int>) {
-    val machine = SerialBlinkyMachine(words)
+    val machine = ReferenceMachine(words)
     machine.run()
 }
