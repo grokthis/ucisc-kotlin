@@ -1,23 +1,20 @@
 package com.grokthis.ucisc.compile
 
-class LabelParser: Parser() {
-    override fun parse(line: String, rootParser: Parser?): ParsedLine? {
-        val regex = Regex("^(?<name>[a-zA-Z0-9.?/@$]+):.*")
-        val match = regex.matchEntire(line) ?: return null
+import java.lang.IllegalArgumentException
 
-        val name = match.groups["name"]?.value ?: return null
-        val parsed = ParsedLine()
-        parsed.labels.add(name)
+class LabelParser: Parser<String> {
+    private val labelRegex = Regex("(?<label>[a-zA-Z0-9_\\-]+):")
 
-        if (rootParser != null && line.length > name.length) {
-            val subLine = rootParser.parse(line.substring(name.length + 1).trim(), rootParser)
-            if (subLine != null) {
-                parsed.labels.addAll(subLine.labels)
-                parsed.data.addAll(subLine.data)
-                parsed.instructions.addAll(subLine.instructions)
-                parsed.variables.addAll(subLine.variables)
-            }
-        }
-        return parsed
+    override fun parse(line: String, scope: Scope): String {
+        val match = labelRegex.matchEntire(line)
+            ?: throw IllegalArgumentException("Expected valid label")
+
+        val label = match.groups["label"]!!.value
+        scope.lastWords().addLabel(label)
+        return label
+    }
+
+    override fun matches(line: String): Boolean {
+        return line.matches(labelRegex)
     }
 }

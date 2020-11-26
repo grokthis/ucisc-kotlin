@@ -1,16 +1,36 @@
 package com.grokthis.ucisc.compile
 
-class DefParser: Parser() {
-    override fun parse(line: String, rootParser: Parser?): ParsedLine? {
-        val defRegex = Regex("def\\s+(?<name>[a-zA-Z0-9@.?]+)\\s+as\\s+(?<value>-?[0-9]+)")
+import java.lang.IllegalArgumentException
+
+class DefParser: Parser<Unit> {
+    private val defRegex =
+        Regex("def +(?<name>[a-zA-Z0-9_\\-]+)/(?<reg>[a-zA-Z0-9]+) *(?<src><.+)?")
+
+    override fun parse(line: String, scope: Scope) {
         val match = defRegex.matchEntire(line)
-        if (match != null) {
-            val name = match.groups["name"]!!.value
-            val value = match.groups["value"]!!.value
-            val parsed = ParsedLine()
-            parsed.defs[name] = value.toInt()
-            return parsed
+            ?: throw IllegalArgumentException(
+                "Expecting valid def: def <name>/<register> [source]"
+            )
+
+        val name = match.groups["name"]!!.value
+        val registerName = match.groups["reg"]!!.value.toUpperCase()
+        val register = try {
+            Register.valueOf(registerName)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalArgumentException(
+                "Invalid register name: $registerName, expecting r[1-6]."
+            )
         }
-        return null
+        scope.defineRegister(name, register)
+        val source = match.groups["src"]?.value
+        if (source != null) {
+            val source: Source = SourceParser().parse(source, scope)
+            val argument = Argument(register, 0, true)
+            scope.addWords(Statement(argument, false, source))
+        }
+    }
+
+    override fun matches(line: String): Boolean {
+        return line.startsWith("def")
     }
 }

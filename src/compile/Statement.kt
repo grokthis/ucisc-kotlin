@@ -7,18 +7,12 @@ class Statement(
     val push: Boolean,
     val source: Source
 ): Words() {
-    private val labels: MutableList<String> = mutableListOf()
-
     override fun resolveLabels(pc: Int, labels: MutableMap<String, Int>): Int {
         val nextPC = pc + 2
         this.labels.forEach { label ->
             labels[label] = nextPC
         }
         return nextPC
-    }
-
-    override fun addLabel(name: String) {
-        labels.add(name)
     }
 
     override fun wordCount(): Int {

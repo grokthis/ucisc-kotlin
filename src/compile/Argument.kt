@@ -7,7 +7,7 @@ class Argument(
     val register: Register,
     var offset: Int,
     val addr: Boolean,
-    val immLabel: String? = null
+    private val immLabel: String? = null
 ) {
 
     fun resolveLabel(pc: Int, labels: Map<String, Int>) {
@@ -52,20 +52,6 @@ class Argument(
 
             val isAddr = match.groups["addrOf"] != null
             return Argument(register, offset, isAddr, immLabel)
-        }
-
-        private fun offsetFromString(offsetString: String?): Int {
-            return if (offsetString != null) {
-                try {
-                    offsetString.toInt()
-                } catch (e: NumberFormatException) {
-                    throw IllegalArgumentException(
-                        "Invalid offset: $offsetString, expecting valid number"
-                    )
-                }
-            } else {
-                0
-            }
         }
 
         private fun baseOffset(scope: Scope, varName: String?, register: Register): Int {

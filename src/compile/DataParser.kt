@@ -1,35 +1,49 @@
 package com.grokthis.ucisc.compile
 
-class DataParser: Parser() {
-    val strMatch = Regex("\"(?<str>.*)")
+import java.lang.IllegalArgumentException
 
-    override fun parse(line: String, rootParser: Parser?): ParsedLine? {
-        if (!line.startsWith("%") && !line.startsWith("\"")) {
-            return null
+class DataParser: Parser<WordData> {
+    private val dataRegex = Regex("((?<label>[a-zA-Z0-9_\\-]+):)? *(\"(?<str>.*)\")|(% *(?<data>[0-9a-fA-F ]*))")
+
+    override fun parse(line: String, scope: Scope): WordData {
+        val match = dataRegex.matchEntire(line)
+            ?: throw IllegalArgumentException("Expected valid label")
+
+        if (match.groups["label"] != null) {
+            val label = match.groups["label"]!!.value
+            scope.lastWords().addLabel(label)
         }
+
         val words = mutableListOf<Int>()
-        if (line.startsWith("\"")) {
-            val strLiteral = line.substring(1)
+        if (match.groups["str"] != null) {
+            var strLiteral = match.groups["str"]!!.value
+            strLiteral = strLiteral.replace("\"\"", "\"")
+            strLiteral = strLiteral.replace("\\n", "\n")
             val bytes = strLiteral.toByteArray(Charsets.UTF_8)
             bytes.forEach { byte ->
                 val word = byte.toInt()
                 words.add(word)
             }
             words.add(0, words.size)
-        } else {
-            val hexLine = line.replace(" ", "")
+        } else if (match.groups["data"] != null) {
+            val dataLiteral = match.groups["data"]!!.value
+            val hexLine = dataLiteral.replace(" ", "")
             for (i in 0 .. hexLine.length / 4) {
                 val hexValue = hexLine.substring(i * 4, minOf(i * 4 + 4, hexLine.length))
                 val word = hexValue.toIntOrNull(16)
                 if (word == null) {
-                    println("Unable to parse data as hex fully: $hexValue")
+                    throw IllegalArgumentException(
+                        "Unable to parse data as hex: $hexValue"
+                    )
                 } else {
                     words.add(word)
                 }
             }
         }
-        val parsed = ParsedLine()
-        parsed.data.addAll(words)
-        return parsed
+        return WordData(words)
+    }
+
+    override fun matches(line: String): Boolean {
+        return line.matches(Regex("((?<label>[a-zA-Z0-9_\\-]+):)? *\"|%.*"))
     }
 }

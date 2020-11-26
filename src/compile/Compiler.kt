@@ -8,7 +8,7 @@ class Compiler {
             var scope = Scope()
             code.split("\n").forEachIndexed { lineIndex, line ->
                 try {
-                    var cleanLine = line.replace(Regex("#.*"), "").trim()
+                    val cleanLine = line.replace(Regex("#.*"), "").trim()
                     if (cleanLine.isNotEmpty()) {
                         scope = scope.parseLine(cleanLine)
                     }
@@ -21,15 +21,13 @@ class Compiler {
                 System.err.println("Found unclosed block at the end of the file")
             }
             val labels = mutableMapOf<String, Int>()
-            val words =
-                try {
-                    scope.resolveLabels(0, labels)
-                    scope.words(0, labels)
-                } catch (e: IllegalArgumentException) {
-                    System.err.println("Error: ${e.message}")
-                    exitProcess(1)
-                }
-            return words
+            return try {
+                scope.resolveLabels(0, labels)
+                scope.words(0, labels)
+            } catch (e: IllegalArgumentException) {
+                System.err.println("Error: ${e.message}")
+                exitProcess(1)
+            }
         }
     }
 }
