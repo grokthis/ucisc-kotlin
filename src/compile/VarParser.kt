@@ -2,11 +2,11 @@ package com.grokthis.ucisc.compile
 
 import java.lang.IllegalArgumentException
 
-class VarParser: Parser<Unit> {
+class VarParser: Parser {
     private val varRegex =
         Regex("var +(?<reg>[a-zA-Z0-9_\\-]+)\\.(?<name>[a-zA-Z0-9_\\-]+)/(?<offset>[0-9]+) *(?<push>push)? *(?<src><.+)?")
 
-    override fun parse(line: String, scope: Scope) {
+    override fun parse(line: String, scope: Scope): Scope {
         val match = varRegex.matchEntire(line)
             ?: throw IllegalArgumentException(
                 "Expecting valid var: var <register>.<name>/<offset> [source]"
@@ -27,6 +27,7 @@ class VarParser: Parser<Unit> {
             val argument = Argument(register, offsetValue, false)
             scope.addWords(Statement(argument, push != null, parsedSource))
         }
+        return scope
     }
 
     override fun matches(line: String): Boolean {

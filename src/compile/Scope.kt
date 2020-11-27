@@ -3,12 +3,13 @@ package com.grokthis.ucisc.compile
 import java.lang.IllegalArgumentException
 
 class Scope(val parent: Scope? = null): Words() {
-    private val parsers = listOf(
+    private val parsers: List<Parser> = listOf(
         DefParser(),
         VarParser(),
         LabelParser(),
         StatementParser(),
-        DataParser()
+        DataParser(),
+        FunctionParser()
     )
 
     private val words: MutableList<Words> = mutableListOf()
@@ -47,7 +48,7 @@ class Scope(val parent: Scope? = null): Words() {
             variables[register] != null -> {
                 val offset = variables[register]!![variableName]
                     ?: parent?.findVariable(register, variableName)
-                    ?: throw IllegalStateException(
+                    ?: throw IllegalArgumentException(
                         "Unexpected missing variable: $variableName"
                     )
                 offset
@@ -135,14 +136,13 @@ class Scope(val parent: Scope? = null): Words() {
             else -> {
                 val parser = parsers.find { it.matches(line) }
                     ?: throw IllegalArgumentException("Expecting valid statement")
-                parser.parse(line, this)
+                return parser.parse(line, this)
             }
         }
-        return this
     }
 
     override fun resolveLabels(pc: Int, labels: MutableMap<String, Int>): Int {
-        this.labels.forEach { label ->
+        this.labels.forEach { (label, _) ->
             labels[label] = pc
         }
         var currentPC = pc

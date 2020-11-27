@@ -2,11 +2,11 @@ package com.grokthis.ucisc.compile
 
 import java.lang.IllegalArgumentException
 
-class StatementParser: Parser<Statement> {
+class StatementParser: Parser {
     private val dstRegex =
         Regex("(?<arg>&?[a-zA-Z0-9\\-_/.]+) *(?<inc>push)? *(?<src><.+)")
 
-    override fun parse(line: String, scope: Scope): Statement {
+    override fun parse(line: String, scope: Scope): Scope {
         val match = dstRegex.matchEntire(line)
             ?: throw IllegalArgumentException(
                 "Expecting valid destination: [&]<register>[.<variable>][/<offset>] [push] [source]"
@@ -30,12 +30,19 @@ class StatementParser: Parser<Statement> {
         val statement = Statement(argument, isInc, source)
         scope.addWords(statement)
 
-        if (statement.push) {
-            scope.updateDelta(statement.argument.register, 1)
-        } else if (statement.source.pop) {
-            scope.updateDelta(statement.source.argument.register, -1)
+        // Changing the PC destroys stack counting, this has to be taken into account
+        // by the programmer, so we ignore stack changes made when the PC is the target
+        if (statement.argument.register != Register.PC) {
+            if (statement.push) {
+                scope.updateDelta(statement.argument.register, 1)
+            } else if (statement.source.pop) {
+                scope.updateDelta(
+                    statement.source.argument.register,
+                    -1 * statement.source.argument.offset
+                )
+            }
         }
-        return statement
+        return scope
     }
 
     override fun matches(line: String): Boolean {

@@ -144,8 +144,24 @@ class StagedProcessor(
         when (step) {
             0 -> {
                 result = Alu().compute(instruction.aluCode, srcValue, dstValue, flags)
+                var increment = 0
+                if (instruction.shouldStore(flags)) {
+                    increment = when {
+                        instruction.push -> -1
+                        instruction.pop -> instruction.immediate + 1
+                        else -> 0
+                    }
+                    when (if (instruction.push) instruction.destination else instruction.source) {
+                        1 -> r1 += increment
+                        2 -> r2 += increment
+                        3 -> r3 += increment
+                        9 -> r4 += increment
+                        10 -> r5 += increment
+                        11 -> r6 += increment
+                    }
+                }
                 memory.writeData = result.value
-                memory.writeAddress = dstAddress
+                memory.writeAddress = dstAddress + increment
                 pc = (pc + 2).and(0xFFFF)
                 memory.readAddress =
                     if (instruction.destination == 0 && instruction.shouldStore(flags)) {
@@ -190,7 +206,7 @@ class StagedProcessor(
         }
     }
 
-    fun run(debugEnabled: Boolean = false) {
+    fun run(debugEnabled: Boolean = true) {
         debug = debugEnabled
         while (true) {
             // Set the current step

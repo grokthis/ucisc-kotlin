@@ -7,11 +7,11 @@ import java.lang.IllegalArgumentException
  *     <effect> [&]<register>[.<variable>][/<offset>] [pop]
  * where effect is one of: <0, <!, <n, <p, <~, <-, <o, <i
  */
-class SourceParser: Parser<Source> {
+class SourceParser {
     private val srcRegex =
         Regex("<(?<eff>[\\-~0!noei])\\?? (?<op>[a-z]+) (?<arg>&?[a-zA-Z0-9\\-_/.]+) *(?<inc>pop)?")
 
-    override fun parse(line: String, scope: Scope): Source {
+    fun parse(line: String, scope: Scope): Source {
         val match = srcRegex.matchEntire(line)
             ?: throw IllegalArgumentException(
                 "Expected valid source: <effect> [&]<register>[.<variable>][/<offset>] [pop]"
@@ -49,7 +49,7 @@ class SourceParser: Parser<Source> {
         return Source(argument, op, effect, isInc)
     }
 
-    override fun matches(line: String): Boolean {
+    fun matches(line: String): Boolean {
         return line.matches(srcRegex)
     }
 }

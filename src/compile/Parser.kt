@@ -1,7 +1,7 @@
 package com.grokthis.ucisc.compile
 
-interface Parser<T> {
-    fun parse(line: String, scope: Scope): T
+interface Parser {
+    fun parse(line: String, scope: Scope): Scope
 
     fun matches(line: String): Boolean
 }

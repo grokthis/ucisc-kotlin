@@ -2,10 +2,10 @@ package com.grokthis.ucisc.compile
 
 import java.lang.IllegalArgumentException
 
-class DataParser: Parser<WordData> {
+class DataParser: Parser {
     private val dataRegex = Regex("((?<label>[a-zA-Z0-9_\\-]+):)? *(\"(?<str>.*)\")|(% *(?<data>[0-9a-fA-F ]*))")
 
-    override fun parse(line: String, scope: Scope): WordData {
+    override fun parse(line: String, scope: Scope): Scope {
         val match = dataRegex.matchEntire(line)
             ?: throw IllegalArgumentException("Expected valid label")
 
@@ -40,7 +40,8 @@ class DataParser: Parser<WordData> {
                 }
             }
         }
-        return WordData(words)
+        scope.addWords(WordData(words))
+        return scope
     }
 
     override fun matches(line: String): Boolean {

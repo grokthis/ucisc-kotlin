@@ -2,11 +2,11 @@ package com.grokthis.ucisc.compile
 
 import java.lang.IllegalArgumentException
 
-class DefParser: Parser<Unit> {
+class DefParser: Parser {
     private val defRegex =
         Regex("def +(?<name>[a-zA-Z0-9_\\-]+)/(?<reg>[a-zA-Z0-9]+) *(?<src><.+)?")
 
-    override fun parse(line: String, scope: Scope) {
+    override fun parse(line: String, scope: Scope): Scope {
         val match = defRegex.matchEntire(line)
             ?: throw IllegalArgumentException(
                 "Expecting valid def: def <name>/<register> [source]"
@@ -28,6 +28,7 @@ class DefParser: Parser<Unit> {
             val argument = Argument(register, 0, true)
             scope.addWords(Statement(argument, false, source))
         }
+        return scope
     }
 
     override fun matches(line: String): Boolean {

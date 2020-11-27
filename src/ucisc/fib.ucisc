@@ -1,0 +1,47 @@
+# Compute Fibonacci numbers
+#
+# By default, computes fib(val/8) == val/21. fib(24) is the maximum
+# value that will compute correctly without overflow.
+#
+# To run:
+#   $ ucisc examples/fib.ucisc
+
+def stack/r1 <- copy val/0
+
+stack.fib(val/24) -> result
+
+&r1 <- copy stack.result # Display on LEDs
+
+pc <- copy pc/0 # halt
+
+fun stack.fib(n) -> result {
+    # fib(0) == 0
+    stack.n <~ or stack.n
+    {
+        pc <!? copy pc/break
+
+        stack.result <- copy val/0
+        pc <- copy stack.return pop
+    }
+
+    # fib(1) == 1
+    stack.n <~ sub val/1
+    {
+        pc <!? copy pc/break
+
+        stack.result <- copy val/1
+        pc <- copy stack.return pop
+    }
+
+    # Recurse for fib(arg-1) and fib(arg-2)
+    stack.n <- sub val/1     # replace n with n - 1
+
+    stack.fib(stack.n) -> fib_n-1
+    stack.n <- sub val/1     # replace n - 1 with n - 2
+    stack.fib(stack.n) -> fib_n-2
+
+    stack.fib_n-1 <- add stack.fib_n-2
+    stack.result <- copy stack.fib_n-1
+
+    pc <- copy stack.return pop
+}

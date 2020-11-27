@@ -9,7 +9,7 @@ class Statement(
 ): Words() {
     override fun resolveLabels(pc: Int, labels: MutableMap<String, Int>): Int {
         val nextPC = pc + 2
-        this.labels.forEach { label ->
+        this.labels.forEach { (label, _) ->
             labels[label] = nextPC
         }
         return nextPC

@@ -28,9 +28,11 @@ class Instruction(msWord: Int, lsWord: Int) {
     val dstMem
         get() = destination in 1..3 || destination in 9..11
     val srcMem
-        get() = source in 1..3 || source in 5..7
+        get() = source in 1..3 || source in 9..11
     val pop
-        get() = increment == 1 && !dstMem
+        get() = increment == 1 && srcMem && !dstMem
+    val push
+        get() = increment == 1 && dstMem
 
     fun shouldStore(flags: Int): Boolean {
         val zero = flags.and(0x0001) != 0

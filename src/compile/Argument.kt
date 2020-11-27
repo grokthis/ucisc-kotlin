@@ -26,7 +26,7 @@ class Argument(
 
     companion object {
         private val regex =
-            Regex("(?<addrOf>&)?(?<reg>[a-zA-Z0-9_\\-]+)(\\.(?<var>[a-zA-Z0-9]+))?(/(?<offset>-?[a-zA-Z0-9]+))?")
+            Regex("(?<addrOf>&)?(?<reg>[a-zA-Z0-9_\\-]+)(\\.(?<var>[a-zA-Z0-9_\\-]+))?(/(?<offset>-?[a-zA-Z0-9_\\-]+))?")
 
         fun parse(str: String, scope: Scope): Argument {
             val match = regex.matchEntire(str)

@@ -44,7 +44,7 @@ class MemoryBlock(
         // hardware in read before write mode.
         _dataOut = data[readAddress % data.size]
         if (writeEnabled && step == 0) {
-            data[writeAddress] = writeData
+            data[writeAddress % data.size] = writeData
         }
     }
 }
