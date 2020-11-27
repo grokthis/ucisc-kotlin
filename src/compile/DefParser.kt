@@ -24,9 +24,8 @@ class DefParser: Parser {
         scope.defineRegister(name, register)
         val source = match.groups["src"]?.value
         if (source != null) {
-            val source: Source = SourceParser().parse(source, scope)
             val argument = Argument(register, 0, true)
-            scope.addWords(Statement(argument, false, source))
+            scope.addWords(Statement(argument, false, Source.parse(source, scope)))
         }
         return scope
     }

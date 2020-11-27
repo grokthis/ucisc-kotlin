@@ -56,9 +56,7 @@ class Argument(
 
         private fun baseOffset(scope: Scope, varName: String?, register: Register): Int {
             return if (varName != null) {
-                val base = scope.findVariable(register, varName)
-                val delta = scope.findDelta(register, varName)
-                base + delta
+                scope.findVariable(register, varName).offset
             } else {
                 0
             }

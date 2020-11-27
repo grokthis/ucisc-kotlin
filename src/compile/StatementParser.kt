@@ -26,7 +26,7 @@ class StatementParser: Parser {
         }
 
         val isInc = match.groups["inc"] != null
-        val source: Source = SourceParser().parse(match.groups["src"]!!.value, scope)
+        val source: Source = Source.parse(match.groups["src"]!!.value, scope)
         val statement = Statement(argument, isInc, source)
         scope.addWords(statement)
 

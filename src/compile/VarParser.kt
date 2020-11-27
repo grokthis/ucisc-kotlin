@@ -23,7 +23,7 @@ class VarParser: Parser {
         scope.defineVariable(register, name, offsetValue)
 
         if (source != null) {
-            val parsedSource: Source = SourceParser().parse(source, scope)
+            val parsedSource: Source = Source.parse(source, scope)
             val argument = Argument(register, offsetValue, false)
             scope.addWords(Statement(argument, push != null, parsedSource))
         }

@@ -14,8 +14,7 @@ class Scope(val parent: Scope? = null): Words() {
 
     private val words: MutableList<Words> = mutableListOf()
     private val defines: MutableMap<String, Register> = mutableMapOf()
-    private val variables: MutableMap<Register, MutableMap<String, Int>> = mutableMapOf()
-    private val deltas: MutableMap<Register, MutableMap<String, Int>> = mutableMapOf()
+    private val variables: MutableMap<Register, MutableMap<String, Variable>> = mutableMapOf()
 
     fun findRegister(registerName: String): Register {
         return when {
@@ -40,10 +39,9 @@ class Scope(val parent: Scope? = null): Words() {
     fun defineRegister(name: String, register: Register) {
         defines[name] = register
         variables.getOrPut(register) { mutableMapOf() }
-        deltas.getOrPut(register) { mutableMapOf() }
     }
 
-    fun findVariable(register: Register, variableName: String): Int {
+    fun findVariable(register: Register, variableName: String): Variable {
         return when {
             variables[register] != null -> {
                 val offset = variables[register]!![variableName]
@@ -66,30 +64,7 @@ class Scope(val parent: Scope? = null): Words() {
 
     fun defineVariable(register: Register, name: String, offset: Int) {
         val vars = variables.getOrPut(register) { mutableMapOf() }
-        vars[name] = offset
-        val offsets = deltas.getOrPut(register) { mutableMapOf() }
-        offsets[name] = 0
-    }
-
-    fun findDelta(register: Register, variableName: String): Int {
-        return when {
-            deltas[register] != null -> {
-                val offset = deltas[register]!![variableName]
-                    ?: parent?.findDelta(register, variableName)
-                    ?: throw IllegalStateException(
-                        "Unexpected missing delta: $variableName"
-                    )
-                offset
-            }
-            parent != null -> {
-                parent.findDelta(register, variableName)
-            }
-            else -> {
-                throw IllegalArgumentException(
-                    "Missing variable declaration: $register.$variableName."
-                )
-            }
-        }
+        vars[name] = Variable(name, offset)
     }
 
     fun lastWords(): Words {
@@ -105,10 +80,10 @@ class Scope(val parent: Scope? = null): Words() {
     }
 
     fun updateDelta(register: Register, change: Int) {
-        if (deltas[register] != null) {
-            val vars = deltas[register]!!
-            vars.forEach { (name, value) ->
-                vars[name] = value + change
+        if (variables[register] != null) {
+            val vars = variables[register]!!
+            vars.forEach { (_, value) ->
+                value.delta += change
             }
         }
         parent?.updateDelta(register, change)
