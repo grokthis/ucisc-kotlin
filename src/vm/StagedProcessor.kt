@@ -12,13 +12,15 @@ import kotlin.system.exitProcess
  * is a bug unless otherwise documented. Speed differences are not a bug.
  */
 class StagedProcessor(
-    private val memory: MemoryBlock
+    private val memory: MemoryBlock,
+    private val devices: Devices
 ): ClockSynchronized {
     override var step: Int = 0
     private val clockedComponents = mutableListOf<ClockSynchronized>()
     init {
         clockedComponents.add(memory)
         clockedComponents.add(this)
+        clockedComponents.addAll(devices.devices)
     }
     private var pc: Int = 0xFFFE
     private var instructionWord: Int = 0
@@ -38,7 +40,7 @@ class StagedProcessor(
     private var r6: Int = 0
     private var flags: Int = 0x0100
     private var interrupt: Int = 0
-    private var banking: Int = 0
+    private var banking: Int = 0xE0
 
     var debug = false
 
@@ -112,11 +114,27 @@ class StagedProcessor(
         }
     }
 
+    fun isBanked(register: Int): Boolean {
+        return when (register) {
+            1 -> banking.and(0x02) > 0
+            2 -> banking.and(0x04) > 0
+            3 -> banking.and(0x08) > 0
+            9 -> banking.and(0x20) > 0
+            10 -> banking.and(0x40) > 0
+            11 -> banking.and(0x80) > 0
+            else -> false
+        }
+    }
+
     override fun captureStageInputs() {
         when (step) {
             0 -> {
                 dstValue = if (instruction.dstMem) {
-                    memory.dataOut
+                    if (isBanked(instruction.destination)) {
+                        devices.dataOut
+                    } else {
+                        memory.dataOut
+                    }
                 } else {
                     dstAddress
                 }
@@ -131,7 +149,11 @@ class StagedProcessor(
             }
             3 -> {
                 srcValue = if (instruction.srcMem) {
-                    memory.dataOut
+                    if (isBanked(instruction.source)) {
+                        devices.dataOut
+                    } else {
+                        memory.dataOut
+                    }
                 } else {
                     srcAddress
                 }
@@ -152,16 +174,18 @@ class StagedProcessor(
                         else -> 0
                     }
                     when (if (instruction.push) instruction.destination else instruction.source) {
-                        1 -> r1 += increment
-                        2 -> r2 += increment
-                        3 -> r3 += increment
-                        9 -> r4 += increment
-                        10 -> r5 += increment
-                        11 -> r6 += increment
+                        1 -> r1 = (r1 + increment).and(0xFFFF)
+                        2 -> r2 = (r2 + increment).and(0xFFFF)
+                        3 -> r3 = (r3 + increment).and(0xFFFF)
+                        9 -> r4 = (r4 + increment).and(0xFFFF)
+                        10 -> r5 = (r5 + increment).and(0xFFFF)
+                        11 -> r6 = (r6 + increment).and(0xFFFF)
                     }
                 }
                 memory.writeData = result.value
+                devices.writeData = result.value
                 memory.writeAddress = dstAddress + increment
+                devices.writeAddress = dstAddress + increment
                 pc = (pc + 2).and(0xFFFF)
                 memory.readAddress =
                     if (instruction.destination == 0 && instruction.shouldStore(flags)) {
@@ -169,16 +193,20 @@ class StagedProcessor(
                     } else {
                         pc
                     }
-                memory.writeEnabled = instruction.dstMem && instruction.shouldStore(flags)
+                val memWriteEnabled = instruction.dstMem && instruction.shouldStore(flags)
+                memory.writeEnabled = memWriteEnabled && !isBanked(instruction.destination)
+                devices.writeEnabled = memWriteEnabled && isBanked(instruction.destination)
             }
             1 -> {
                 memory.readAddress = pc + 1
             }
             2 -> {
                 memory.readAddress = srcAddress
+                devices.readAddress = srcAddress
             }
             3 -> {
                 memory.readAddress = dstAddress
+                devices.readAddress = dstAddress
             }
         }
     }
@@ -206,7 +234,7 @@ class StagedProcessor(
         }
     }
 
-    fun run(debugEnabled: Boolean = true) {
+    fun run(debugEnabled: Boolean = false) {
         debug = debugEnabled
         while (true) {
             // Set the current step

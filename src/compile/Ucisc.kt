@@ -6,18 +6,39 @@ import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
-        println("Usage: ucisc [-c] <source.ucisc> [<source.ucisc> ...]")
+        println("Usage: ucisc [-r=<file>] [-t=<file>] [-d] [-c] <source.ucisc> [<source.ucisc> ...]")
         println("  -c :  Compile and dump hex")
+        println("  -d :  Start in debug mode")
+        println("  -r :  Specify the UART Rx file")
+        println("  -t :  Specify the UART Tx file")
         exitProcess(1)
     }
 
     var compile = false
+    var debug = false
+    var rx = "rx.data"
+    var tx = "tx.data"
     val codeList = args.map { arg ->
-        if (arg == "-c") {
-            compile = true
-            null
-        } else {
-            readFile(arg)
+        when {
+            arg.startsWith("-t") -> {
+                tx = arg.split("=").last()
+                null
+            }
+            arg.startsWith("-r") -> {
+                rx = arg.split("=").last()
+                null
+            }
+            arg == "-c" -> {
+                compile = true
+                null
+            }
+            arg == "-d" -> {
+                debug = true
+                null
+            }
+            else -> {
+                readFile(arg)
+            }
         }
     }.filterNotNull()
 
@@ -27,7 +48,7 @@ fun main(args: Array<String>) {
     if (compile) {
         dumpHex(words)
     } else {
-        run(words);
+        run(words, debug, rx, tx);
     }
 }
 
@@ -50,7 +71,15 @@ fun dumpHex(words: List<Int>) {
     }
 }
 
-fun run(words: List<Int>) {
-    val machine = ReferenceMachine(words)
-    machine.run()
+fun run(words: List<Int>, debug: Boolean, rx: String, tx: String) {
+    val rxFile = File(rx)
+    if (!rxFile.exists()) {
+        rxFile.createNewFile()
+    }
+    val txFile = File(tx)
+    if (!txFile.exists()) {
+        txFile.createNewFile()
+    }
+    val machine = ReferenceMachine(words, rxFile, txFile)
+    machine.run(debug)
 }

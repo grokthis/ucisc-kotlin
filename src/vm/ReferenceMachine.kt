@@ -6,12 +6,17 @@ import java.awt.FlowLayout
 import java.awt.Toolkit
 import java.awt.event.KeyEvent
 import java.awt.event.KeyListener
+import java.io.File
 import javax.swing.JFrame
 import javax.swing.JLabel
 import javax.swing.SwingConstants.LEADING
 import javax.swing.SwingUtilities
 
-class ReferenceMachine(val code: List<Int>): JFrame(), ClockSynchronized, KeyListener {
+class ReferenceMachine(
+    val code: List<Int>,
+    private val rxFile: File,
+    private val txFile: File
+): JFrame(), ClockSynchronized, KeyListener {
 
     private val processor: StagedProcessor
     private val ledLabels: List<JLabel>
@@ -22,7 +27,14 @@ class ReferenceMachine(val code: List<Int>): JFrame(), ClockSynchronized, KeyLis
         code.forEachIndexed { address, word ->
             memoryBlock.setData(address, word)
         }
-        processor = StagedProcessor(memoryBlock)
+        val devices = Devices()
+        val inputStream = rxFile.inputStream()
+        val outputStream = txFile.outputStream()
+        val uart = UartDevice(100, UartChannelEmulator(
+            inputStream, outputStream
+        ))
+        devices.addDevice(2, uart)
+        processor = StagedProcessor(memoryBlock, devices)
         processor.synchronizeWith(this)
         title = "uCISC Emulator"
         defaultCloseOperation = JFrame.EXIT_ON_CLOSE
@@ -45,8 +57,8 @@ class ReferenceMachine(val code: List<Int>): JFrame(), ClockSynchronized, KeyLis
         isVisible = true
     }
 
-    fun run() {
-        processor.run()
+    fun run(debug: Boolean) {
+        processor.run(debug)
     }
 
     override fun captureStageInputs() {

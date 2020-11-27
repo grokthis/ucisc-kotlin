@@ -4,13 +4,19 @@ import java.lang.IllegalArgumentException
 
 class MemoryBlock(
     addressWidth: Int
-): ClockSynchronized {
+): MemoryMapped {
     override var step: Int = 0
-    var writeAddress: Int = 0
-    var writeData: Int = 0
-    var writeEnabled: Boolean = false
-    var readAddress: Int = 0
-    val dataOut: Int
+    override var writeAddress: Int = 0
+        set(value) {
+            field = value.and(0xFFFF)
+        }
+    override var writeData: Int = 0
+    override var writeEnabled: Boolean = false
+    override var readAddress: Int = 0
+        set(value) {
+            field = value.and(0xFFFF)
+        }
+    override val dataOut: Int
        get() = _dataOut
 
     private var _dataOut: Int = 0
