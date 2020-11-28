@@ -24,7 +24,7 @@ class DataParser: Parser {
                 val word = byte.toInt()
                 words.add(word)
             }
-            words.add(0, words.size)
+            words.add(0) // Null terminate
         } else if (match.groups["data"] != null) {
             val dataLiteral = match.groups["data"]!!.value
             val hexLine = dataLiteral.replace(" ", "")
@@ -45,6 +45,6 @@ class DataParser: Parser {
     }
 
     override fun matches(line: String): Boolean {
-        return line.matches(Regex("((?<label>[a-zA-Z0-9_\\-]+):)? *\"|%.*"))
+        return line.matches(Regex("((?<label>[a-zA-Z0-9_\\-]+):)? *(\"|%).*"))
     }
 }

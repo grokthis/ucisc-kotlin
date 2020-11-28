@@ -7,9 +7,9 @@ class Scope(val parent: Scope? = null): Words() {
         DefParser(),
         VarParser(),
         LabelParser(),
-        StatementParser(),
         DataParser(),
-        FunctionParser()
+        FunctionParser(),
+        StatementParser()
     )
 
     private val words: MutableList<Words> = mutableListOf()

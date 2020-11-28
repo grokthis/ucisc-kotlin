@@ -38,7 +38,7 @@ class StatementParser: Parser {
             } else if (statement.source.pop) {
                 scope.updateDelta(
                     statement.source.argument.register,
-                    -1 * statement.source.argument.offset
+                    -1 * (statement.source.argument.offset + 1)
                 )
             }
         }

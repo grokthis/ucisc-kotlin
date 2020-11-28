@@ -20,6 +20,9 @@ class VarParser: Parser {
 
         val register = scope.findRegister(registerName)
         val offsetValue = offset.toInt()
+        if (source != null && push != null) {
+            scope.updateDelta(register, 1)
+        }
         scope.defineVariable(register, name, offsetValue)
 
         if (source != null) {

@@ -3,7 +3,8 @@ package com.grokthis.ucisc.compile
 import java.lang.IllegalArgumentException
 
 class FunctionParser: Parser {
-    private val funRegex = Regex("(?<declare>fun)? *(?<reg>[a-zA-Z0-9_\\-]+)\\.(?<label>[a-zA-Z0-9_\\-]+) *\\((?<args>.*)\\)( *-> *(?<returns>[a-zA-Z0-9_\\-, ]+))(?<scope>\\{)?")
+    private val funRegex = Regex("(?<declare>fun)? *(?<reg>[a-zA-Z0-9_\\-]+)\\.(?<label>[a-zA-Z0-9_\\-]+) *\\((?<args>.*)\\) *(-> *(?<returns>[a-zA-Z0-9_\\-, ]+))?(?<scope>\\{)?")
+
     private val labelRegex = Regex("[a-zA-Z0-9_\\-]+")
 
     override fun parse(line: String, scope: Scope): Scope {
@@ -24,7 +25,7 @@ class FunctionParser: Parser {
             val register = functionScope.findRegister(registerName)
 
             val argsString = match.groups["args"]!!.value
-            val args = argsString.split(",").map { it.trim() }
+            val args = argsString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val invalidArguments = args.filter { !it.matches(labelRegex) }
             if (invalidArguments.isNotEmpty()) {
                 throw IllegalArgumentException("Invalid arguments: ${invalidArguments.joinToString { ", " }}")
@@ -64,7 +65,7 @@ class FunctionParser: Parser {
             val register = functionScope.findRegister(registerName)
 
             val argsString = match.groups["args"]!!.value
-            val args = argsString.split(",").map { it.trim() }
+            val args = argsString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
             val returns = match.groups["returns"]
             if (returns != null) {
