@@ -1,0 +1,213 @@
+# Read file over UART, at EOT/BREAK compile and run locally
+# Memory layout is for 8k words, maximum available on the
+# reference implementation on the TinyFPGA Bx board.
+#
+# Memory layout:
+# 0 - 1k: Compiler code, this file compiled and running
+# 1k - 6k: Code text to compile, starting at 6k
+# 7k: Scope stack starts
+# 8k: Call stack starts
+#
+# Note: on rx, comments, leading and trailing spaces are stripped
+# to maximize code space. The Scope stack can safely overrun the
+# code text space since we compile in a single pass and don't need
+# to revisit previous code lines.
+
+var val.codeBuffer/6144
+var val.codeStart/6143
+var val.scopesBuffer/7168
+
+def stack/r1 <- copy val/0
+def code/r4 <- copy val.codeBuffer
+def scopes/r5 <- copy val.scopesBuffer
+
+banking <- copy val/128 # Only r6 is banked
+
+{
+    stack.loadCode()
+
+    stack.println(pc/program-loaded, val/32, val/1)
+
+    &code <- copy val.codeStart
+
+    stack.println(&code, val/32, val/-1)
+
+    pc <- copy pc/loop # Do it again!
+
+    program-loaded: "Program loaded"
+}
+
+
+fun stack.println(strAddr, serialDevice, direction) {
+    # Load register pointed at serial device
+    var stack.saveR6/0 push <- copy &r6
+    def serial/r6 <- copy stack.serialDevice
+    var serial.flags/1
+    var serial.tx/3
+    var val.writeReady/256
+
+    var val.EOTChar/3
+    var val.newlineChar/10
+    var val.carriageReturnChar/13
+
+    def str/r2 <- copy stack.strAddr
+
+    {
+        str/0 <~ or str/0
+        pc <0? copy pc/break # end of string, null
+
+        str/0 <~ sub val.EOTChar
+        pc <0? copy pc/break # end of string, EOT char
+
+        stack.waitForWrite()
+
+        serial.tx <- copy str/0
+        &str <- add stack.direction
+
+        pc <- copy pc/loop
+    }
+
+    stack.waitForWrite()
+    serial.tx <- copy val.newlineChar
+    stack.waitForWrite()
+    serial.tx <- copy val.carriageReturnChar
+
+    &r6 <- copy stack.saveR6 pop
+
+    pc <- copy stack.return pop
+
+    # Print newline + carriage return at the end
+    fun stack.waitForWrite() {
+        serial.flags <~ and val.writeReady
+        pc <0? copy pc/loop # Not ready yet
+
+        pc <- copy stack.return pop
+    }
+}
+
+fun stack.loadCode() {
+    def serial/r6 <- copy val/32
+    var serial.type/1 #LSB
+    var serial.flags/1 #MSB
+    var serial.rx/4
+    var val.readReady/512
+
+    # Charcodes
+    var val.EOTChar/3
+    var val.newlineChar/10
+    var val.linefeedChar/13
+    var val.hashChar/35
+    var val.spaceChar/32
+    var val.tildeChar/126
+
+    var stack.type/0 push <- lsb serial.type
+    stack.type <~ sub val/4
+    pc <!? copy pc/0                  # Halt: Not a serial device
+
+    {
+        stack.read()
+
+        stack.ignoreComment()
+        stack.ignoreInvalid()
+
+        stack.trimLeadingWhitespace()
+        stack.trimDuplicateWhitespace()
+        stack.trimTrailingWhitespace()
+
+        { # Detect EOT
+            code/0 <~ sub val.EOTChar
+            pc <0? copy stack.return pop
+        }
+        pc <- copy pc/loop
+    }
+
+    fun stack.trimLeadingWhitespace() {
+        code/0 <~ sub val.spaceChar
+        pc <!? copy stack.return pop
+        code/1 <~ sub val.linefeedChar
+        pc <!? copy stack.return pop
+
+        &code <- copy &code/1 # pop off the leading whitespace
+        pc <- copy stack.return pop
+    }
+
+    fun stack.trimDuplicateWhitespace() {
+        code/0 <~ sub val.spaceChar
+        pc <!? copy stack.return pop
+        code/1 <~ sub val.spaceChar
+        pc <!? copy stack.return pop
+
+        &code <- copy &code/1 # pop off that extra whitespace
+        pc <- copy stack.return pop
+    }
+
+    fun stack.trimTrailingWhitespace() {
+        code/0 <~ sub val.newlineChar
+        pc <!? copy stack.return pop
+        code/1 <~ sub val.spaceChar
+        pc <!? copy stack.return pop
+
+        code/1 <- copy code/0 # move newline over space
+        &code <- copy &code/1 # pop off that extra whitespace
+        pc <- copy stack.return pop
+    }
+
+    fun stack.ignoreInvalid() {
+        {
+            code/0 <~ sub val.newlineChar
+            pc <0? copy pc/break
+            code/0 <~ sub val.linefeedChar
+            pc <0? copy pc/break
+            code/0 <~ sub val.EOTChar
+            pc <0? copy pc/break
+            {
+                code/0 <~ sub val.spaceChar
+                pc <n? copy pc/break
+                code/0 <~ sub val.tildeChar
+                pc <p? copy pc/break
+
+                pc <- copy stack.return pop # Visible char, we are good to go
+            }
+
+            &code <- copy &code/1 # pop off non visible char
+        }
+        pc <- copy stack.return pop
+    }
+
+    fun stack.ignoreComment() {
+        code/0 <~ sub val.hashChar
+        pc <!? copy stack.return pop
+
+        &code <- copy &code/1  # Erase hash
+
+        {
+            stack.read()
+            code/0 <~ sub val.newlineChar
+            pc <0? copy pc/break
+            code/0 <~ sub val.linefeedChar
+            pc <0? copy pc/break
+
+            code/0 <~ sub val.EOTChar
+            pc <0? copy pc/break
+
+            &code <- copy &code/1  # Otherwise, erase commented char
+            pc <- copy pc/loop
+        }
+        pc <- copy stack.return pop
+    }
+
+    fun stack.read() {
+        {
+            serial.flags <~ and val.readReady
+            pc <0? copy pc/loop       # No data to read
+        }
+
+        code/0 push <- copy serial.rx
+        serial.rx <- copy val/0       # Clear read data
+
+        &code <~ sub val/1024
+        pc <0? copy pc/0              # Reached the end of the buffer
+
+        pc <- copy stack.return pop
+    }
+}
