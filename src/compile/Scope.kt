@@ -13,8 +13,15 @@ class Scope(val parent: Scope? = null): Words() {
     )
 
     private val words: MutableList<Words> = mutableListOf()
+    init {
+        // Empty words is needed so that labels can be attached to the beginning
+        // of the scope, but within the scope itself, even if no statements have
+        // been made yet.
+        words.add(EmptyWords())
+    }
     private val defines: MutableMap<String, Register> = mutableMapOf()
     private val variables: MutableMap<Register, MutableMap<String, Variable>> = mutableMapOf()
+    private val resolvedLabels: MutableMap<String, Int> = mutableMapOf()
 
     fun findRegister(registerName: String): Register {
         return when {
@@ -117,23 +124,31 @@ class Scope(val parent: Scope? = null): Words() {
     }
 
     override fun resolveLabels(pc: Int, labels: MutableMap<String, Int>): Int {
-        this.labels.forEach { (label, _) ->
-            labels[label] = pc
-        }
         var currentPC = pc
         words.forEach { statement ->
-            currentPC = statement.resolveLabels(currentPC, labels)
+            currentPC = statement.resolveLabels(currentPC, resolvedLabels)
+        }
+        // Labels are technically outside the current scope at the end
+        this.labels.forEach { (label, _) ->
+            labels[label] = pc
         }
         return currentPC
     }
 
+    private fun fillResolvedLabelScope(labels: MutableMap<String, Int>) {
+        parent?.fillResolvedLabelScope(labels)
+        labels.putAll(resolvedLabels)
+    }
+
     override fun words(pc: Int, labels: Map<String, Int>): List<Int> {
         val words = mutableListOf<Int>()
-        val implicitLabels = labels.toMutableMap()
-        implicitLabels["loop"] = pc
-        implicitLabels["break"] = pc + wordCount()
+        val inScopeLabels = mutableMapOf<String, Int>()
+        fillResolvedLabelScope(inScopeLabels)
+        inScopeLabels.putAll(resolvedLabels)
+        inScopeLabels["loop"] = pc
+        inScopeLabels["break"] = pc + wordCount()
         this.words.forEach { statement ->
-            words.addAll(statement.words(pc + words.size, implicitLabels))
+            words.addAll(statement.words(pc + words.size, inScopeLabels))
         }
         return words
     }

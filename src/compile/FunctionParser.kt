@@ -32,7 +32,7 @@ class FunctionParser: Parser {
             }
 
             val name = match.groups["label"]!!.value
-            functionScope.addLabel(name, args.size)
+            scope.lastWords().addLabel(name, args.size)
 
 
             functionScope.defineVariable(register, "return", args.size)
