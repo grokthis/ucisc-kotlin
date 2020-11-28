@@ -54,7 +54,7 @@ class StagedProcessor(
             1 -> memory.peek((r1 + imm).and(0xFFFF))
             2 -> memory.peek((r2 + imm).and(0xFFFF))
             3 -> memory.peek((r3 + imm).and(0xFFFF))
-            4 -> imm.and(0xFFFF)
+            4 -> banking.and(0xFFFF)
             5 -> (r1 + imm).and(0xFFFF)
             6 -> (r2 + imm).and(0xFFFF)
             7 -> (r3 + imm).and(0xFFFF)
@@ -270,6 +270,10 @@ class StagedProcessor(
                 }
                 "", "n", "next" -> {
                     debug = true
+                    done = true
+                }
+                "resume" -> {
+                    instruction = Instruction(0x0070, 0x0000)
                     done = true
                 }
                 "p", "print" -> {
