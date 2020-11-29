@@ -20,13 +20,18 @@ class VarParser: Parser {
 
         val register = scope.findRegister(registerName)
         val offsetValue = offset.toInt()
+
+        val parsedSource: Source? = if (source != null) {
+            Source.parse(source, scope)
+        } else {
+            null
+        }
         if (source != null && push != null) {
             scope.updateDelta(register, 1)
         }
         scope.defineVariable(register, name, offsetValue)
 
-        if (source != null) {
-            val parsedSource: Source = Source.parse(source, scope)
+        if (parsedSource != null) {
             val argument = Argument(register, offsetValue, false)
             scope.addWords(Statement(argument, push != null, parsedSource))
         }

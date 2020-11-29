@@ -28,7 +28,7 @@ class DataParser: Parser {
         } else if (match.groups["data"] != null) {
             val dataLiteral = match.groups["data"]!!.value
             val hexLine = dataLiteral.replace(" ", "")
-            for (i in 0 .. hexLine.length / 4) {
+            for (i in 0 until hexLine.length / 4) {
                 val hexValue = hexLine.substring(i * 4, minOf(i * 4 + 4, hexLine.length))
                 val word = hexValue.toIntOrNull(16)
                 if (word == null) {

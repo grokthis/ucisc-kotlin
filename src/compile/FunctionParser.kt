@@ -98,9 +98,13 @@ class FunctionParser: Parser {
                 )
             )
             functionScope.updateDelta(register, 1)
-            val parsedArgs = args.map { Argument.parse(it, functionScope) }
-            functionScope.updateDelta(register, -1)
-            parsedArgs.reversed().forEach {
+            val parsedArgs = args.reversed().map {
+                val arg = Argument.parse(it, functionScope)
+                functionScope.updateDelta(register, 1)
+                arg
+            }
+            functionScope.updateDelta(register, -1 * parsedArgs.size - 1)
+            parsedArgs.forEach {
                 functionScope.addWords(
                     Statement(
                         Argument(register, 0, false),
