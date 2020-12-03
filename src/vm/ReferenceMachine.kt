@@ -15,7 +15,8 @@ import javax.swing.SwingUtilities
 class ReferenceMachine(
     val code: List<Int>,
     private val rxFile: File,
-    private val txFile: File
+    private val txFile: File,
+    private val rxSendEOT: Boolean = false
 ): JFrame(), ClockSynchronized, KeyListener {
 
     private val processor: StagedProcessor
@@ -23,7 +24,7 @@ class ReferenceMachine(
     private var ledValue = 0
 
     init {
-        val memoryBlock = MemoryBlock(13)
+        val memoryBlock = MemoryBlock(16)
         code.forEachIndexed { address, word ->
             memoryBlock.setData(address, word)
         }
@@ -31,7 +32,7 @@ class ReferenceMachine(
         val inputStream = rxFile.inputStream()
         val outputStream = txFile.outputStream()
         val uart = UartDevice(100, UartChannelEmulator(
-            inputStream, outputStream
+            inputStream, outputStream, rxSendEOT
         ))
         devices.addDevice(2, uart)
         processor = StagedProcessor(memoryBlock, devices)

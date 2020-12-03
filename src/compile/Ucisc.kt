@@ -6,16 +6,18 @@ import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
-        println("Usage: ucisc [-r=<file>] [-t=<file>] [-d] [-c] <source.ucisc> [<source.ucisc> ...]")
+        println("Usage: ucisc [-r=<file>] [-t=<file>] [options] <source.ucisc> [<source.ucisc> ...]")
         println("  -c :  Compile and dump hex")
         println("  -d :  Start in debug mode")
         println("  -r :  Specify the UART Rx file")
         println("  -t :  Specify the UART Tx file")
+        println("  -e :  Send EOT char after Rx file finishes")
         exitProcess(1)
     }
 
     var compile = false
     var debug = false
+    var rxEOT = false
     var rx = "rx.data"
     var tx = "tx.data"
     val codeList = args.map { arg ->
@@ -36,6 +38,10 @@ fun main(args: Array<String>) {
                 debug = true
                 null
             }
+            arg == "-e" -> {
+                rxEOT = true
+                null
+            }
             else -> {
                 readFile(arg)
             }
@@ -48,7 +54,7 @@ fun main(args: Array<String>) {
     if (compile) {
         dumpHex(words)
     } else {
-        run(words, debug, rx, tx);
+        run(words, debug, rx, tx, rxEOT)
     }
 }
 
@@ -71,7 +77,7 @@ fun dumpHex(words: List<Int>) {
     }
 }
 
-fun run(words: List<Int>, debug: Boolean, rx: String, tx: String) {
+fun run(words: List<Int>, debug: Boolean, rx: String, tx: String, rxEot: Boolean) {
     val rxFile = File(rx)
     if (!rxFile.exists()) {
         rxFile.createNewFile()
@@ -80,6 +86,6 @@ fun run(words: List<Int>, debug: Boolean, rx: String, tx: String) {
     if (!txFile.exists()) {
         txFile.createNewFile()
     }
-    val machine = ReferenceMachine(words, rxFile, txFile)
+    val machine = ReferenceMachine(words, rxFile, txFile, rxEot)
     machine.run(debug)
 }

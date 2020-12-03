@@ -10,7 +10,8 @@ import java.io.OutputStream
  */
 class UartChannelEmulator(
     private val rx: InputStream,
-    private val tx: OutputStream
+    private val tx: OutputStream,
+    private val eotEnabled: Boolean = false
 ) {
     private var byte: Int? = null
     private var toWrite: Int? = null
@@ -28,6 +29,8 @@ class UartChannelEmulator(
             }
             if (rx.available() > 0) {
                 byte = rx.read()
+            } else if (eotEnabled) {
+                byte = 3
             }
         }
     }
