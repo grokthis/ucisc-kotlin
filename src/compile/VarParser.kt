@@ -1,10 +1,11 @@
 package com.grokthis.ucisc.compile
 
 import java.lang.IllegalArgumentException
+import java.lang.NumberFormatException
 
 class VarParser: Parser {
     private val varRegex =
-        Regex("var +(?<reg>[a-zA-Z0-9_\\-]+)\\.(?<name>[a-zA-Z0-9_\\-]+)/(?<offset>[0-9]+) *(?<push>push)? *(?<src><.+)?")
+        Regex("var +(?<reg>[a-zA-Z0-9_\\-]+)\\.(?<name>[a-zA-Z0-9_\\-]+)/(?<offset>(%[0-9a-fA-F]+)|([0-9]+)) *(?<push>push)? *(?<src><.+)?")
 
     override fun parse(line: String, scope: Scope): Scope {
         val match = varRegex.matchEntire(line)
@@ -19,7 +20,16 @@ class VarParser: Parser {
         val source = match.groups["src"]?.value
 
         val register = scope.findRegister(registerName)
-        val offsetValue = offset.toInt()
+        val offsetValue =
+            if (offset.startsWith('%')) {
+                try {
+                    offset.substring(1, offset.length).toInt(16);
+                } catch (e: NumberFormatException) {
+                    throw IllegalArgumentException("Invalid hex value: $offset");
+                }
+            } else {
+                offset.toInt()
+            }
 
         val parsedSource: Source? = if (source != null) {
             Source.parse(source, scope)

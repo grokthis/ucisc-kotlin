@@ -26,7 +26,7 @@ class Argument(
 
     companion object {
         private val regex =
-            Regex("(?<addrOf>&)?(?<reg>[a-zA-Z0-9_\\-]+)(\\.(?<var>[a-zA-Z0-9_\\-]+))?(/(?<offset>-?[a-zA-Z0-9_\\-]+))?")
+            Regex("(?<addrOf>&)?(?<reg>[a-zA-Z0-9_\\-]+)(\\.(?<var>[a-zA-Z0-9_\\-]+))?(/(?<offset>%?-?[a-zA-Z0-9_\\-]+))?")
 
         fun parse(str: String, scope: Scope): Argument {
             val match = regex.matchEntire(str)
@@ -43,10 +43,18 @@ class Argument(
             val offsetString = match.groups["offset"]?.value
             var immLabel: String? = null
             if (offsetString != null) {
-                try {
-                    offset += offsetString.toInt()
-                } catch (e: NumberFormatException) {
-                    immLabel = offsetString
+                if (offsetString.startsWith('%')) {
+                   try {
+                       offset += offsetString.substring(1, offsetString.length).toInt(16);
+                   } catch (e: NumberFormatException) {
+                       throw IllegalArgumentException("Invalid hex value: $offsetString");
+                   }
+                } else {
+                    try {
+                        offset += offsetString.toInt()
+                    } catch (e: NumberFormatException) {
+                        immLabel = offsetString
+                    }
                 }
             }
 

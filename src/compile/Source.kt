@@ -10,7 +10,7 @@ class Source(
 ) {
     companion object {
         private val srcRegex =
-            Regex("<(?<eff>[\\-~0!npoei])\\?? (?<op>[a-z]+) (?<arg>&?[a-zA-Z0-9\\-_/.]+) *(?<inc>pop)?")
+            Regex("<(?<eff>[\\-~0!npoei])\\?? (?<op>[a-z]+) (?<arg>&?[a-zA-Z0-9\\-_/.%]+) *(?<inc>pop)?")
 
         fun parse(line: String, scope: Scope): Source {
             val match = srcRegex.matchEntire(line)
