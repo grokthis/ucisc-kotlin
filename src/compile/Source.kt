@@ -10,7 +10,7 @@ class Source(
 ) {
     companion object {
         private val srcRegex =
-            Regex("<(?<eff>[\\-~0!npoei])\\?? (?<op>[a-z]+) (?<arg>&?[a-zA-Z0-9\\-_/.%]+) *(?<inc>pop)?")
+            Regex("<?(?<eff>\\|?[\\-~0!npoei|1+#&]{1,2})\\?? (?<op>[a-z]+) (?<arg>&?[a-zA-Z0-9\\-_/.%]+) *(?<inc>pop)?")
 
         fun parse(line: String, scope: Scope): Source {
             val match = srcRegex.matchEntire(line)
@@ -21,13 +21,26 @@ class Source(
             val effStr = match.groups["eff"]!!.value
             val effect: Effect = when(effStr) {
                 "0" -> Effect.ZERO
+                "|0" -> Effect.ZERO
                 "!" -> Effect.NOTZERO
+                "1" -> Effect.NOTZERO
+                "|1" -> Effect.NOTZERO
                 "n" -> Effect.NEGATIVE
+                "|n" -> Effect.NEGATIVE
+                "|-" -> Effect.NEGATIVE
                 "p" -> Effect.POSITIVE
+                "|p" -> Effect.POSITIVE
+                "+" -> Effect.POSITIVE
+                "|+" -> Effect.POSITIVE
                 "~" -> Effect.FLAGS
-                "-" -> Effect.STORE
+                "|~" -> Effect.FLAGS
                 "o" -> Effect.OVERFLOW
-                "i" -> Effect.INTERRUPTED
+                "&" -> Effect.OVERFLOW
+                "|&" -> Effect.OVERFLOW
+                "#" -> Effect.ERROR
+                "|#" -> Effect.ERROR
+                "-" -> Effect.STORE
+                "|" -> Effect.STORE
                 else -> {
                     throw IllegalArgumentException(
                         "Invalid effect: <$effStr"

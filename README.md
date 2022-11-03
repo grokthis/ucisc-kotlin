@@ -39,6 +39,8 @@ $ ucisc <file.ucisc>
 
 It will compile and run the results in a standard ucisc machine.
 
+socat -d -d pty,raw,echo=0 pty,raw,echo=0
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/grokthis/micro_cisc. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/grokthis/micro_cisc/blob/master/CODE_OF_CONDUCT.md).

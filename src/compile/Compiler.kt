@@ -23,7 +23,7 @@ class Compiler {
             val labels = mutableMapOf<String, Int>()
             return try {
                 scope.resolveLabels(0, labels)
-                scope.words(0, labels)
+                scope.computeWords(0, labels)
             } catch (e: IllegalArgumentException) {
                 System.err.println("Error: ${e.message}")
                 exitProcess(1)

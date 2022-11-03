@@ -1,7 +1,7 @@
 package com.grokthis.ucisc.compile
 
-class EmptyWords: Words() {
-    override fun words(pc: Int, labels: Map<String, Int>): List<Int> {
+class EmptyMemWords: MemWords() {
+    override fun computeWords(pc: Int, labels: Map<String, Int>): List<Int> {
         return emptyList()
     }
 

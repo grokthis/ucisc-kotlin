@@ -6,7 +6,7 @@ class Statement(
     val argument: Argument,
     val push: Boolean,
     val source: Source
-): Words() {
+): MemWords() {
     override fun resolveLabels(pc: Int, labels: MutableMap<String, Int>): Int {
         val nextPC = pc + 2
         this.labels.forEach { (label, _) ->
@@ -19,7 +19,7 @@ class Statement(
         return 2
     }
 
-    override fun words(pc: Int, labels: Map<String, Int>): List<Int> {
+    override fun computeWords(pc: Int, labels: Map<String, Int>): List<Int> {
         argument.resolveLabel(pc, labels)
         source.argument.resolveLabel(pc, labels)
 

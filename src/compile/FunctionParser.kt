@@ -126,7 +126,7 @@ class FunctionParser: Parser {
     }
 
     override fun matches(line: String): Boolean {
-        return line.startsWith("fun") || line.matches(funRegex)
+        return  line.startsWith("fun") || line.matches(funRegex)
     }
 
 }

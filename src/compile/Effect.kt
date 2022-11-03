@@ -7,6 +7,6 @@ enum class Effect(val value: Int) {
     POSITIVE(3),
     STORE(4),
     OVERFLOW(5),
-    INTERRUPTED(6),
+    ERROR(6),
     FLAGS(7)
 }

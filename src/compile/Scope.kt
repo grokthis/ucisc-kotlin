@@ -2,7 +2,7 @@ package com.grokthis.ucisc.compile
 
 import java.lang.IllegalArgumentException
 
-class Scope(val parent: Scope? = null): Words() {
+class Scope(val parent: Scope? = null): MemWords() {
     private val parsers: List<Parser> = listOf(
         DefParser(),
         VarParser(),
@@ -12,12 +12,12 @@ class Scope(val parent: Scope? = null): Words() {
         StatementParser()
     )
 
-    private val words: MutableList<Words> = mutableListOf()
+    private val words: MutableList<MemWords> = mutableListOf()
     init {
         // Empty words is needed so that labels can be attached to the beginning
         // of the scope, but within the scope itself, even if no statements have
         // been made yet.
-        words.add(EmptyWords())
+        words.add(EmptyMemWords())
     }
     private val defines: MutableMap<String, Register> = mutableMapOf()
     private val variables: MutableMap<Register, MutableMap<String, Variable>> = mutableMapOf()
@@ -74,7 +74,7 @@ class Scope(val parent: Scope? = null): Words() {
         vars[name] = Variable(name, offset)
     }
 
-    fun lastWords(): Words {
+    fun lastWords(): MemWords {
         return if (words.isEmpty()) {
             this
         } else {
@@ -82,8 +82,8 @@ class Scope(val parent: Scope? = null): Words() {
         }
     }
 
-    fun addWords(words: Words) {
-        this.words.add(words)
+    fun addWords(memWords: MemWords) {
+        this.words.add(memWords)
     }
 
     fun updateDelta(register: Register, change: Int) {
@@ -140,7 +140,7 @@ class Scope(val parent: Scope? = null): Words() {
         labels.putAll(resolvedLabels)
     }
 
-    override fun words(pc: Int, labels: Map<String, Int>): List<Int> {
+    override fun computeWords(pc: Int, labels: Map<String, Int>): List<Int> {
         val words = mutableListOf<Int>()
         val inScopeLabels = mutableMapOf<String, Int>()
         fillResolvedLabelScope(inScopeLabels)
@@ -148,7 +148,7 @@ class Scope(val parent: Scope? = null): Words() {
         inScopeLabels["loop"] = pc
         inScopeLabels["break"] = pc + wordCount()
         this.words.forEach { statement ->
-            words.addAll(statement.words(pc + words.size, inScopeLabels))
+            words.addAll(statement.computeWords(pc + words.size, inScopeLabels))
         }
         return words
     }
